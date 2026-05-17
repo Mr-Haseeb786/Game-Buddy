@@ -2,9 +2,10 @@ import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import fs from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import icon from '../../resources/icon.png?asset'
 
 import { FileNode, LibraryData } from '../shared/types'
+import { loginToGoogle, checkExistingAuth, logoutFromGoogle, cancelGoogleLogin } from './auth'
+import { syncLibraryToDrive, downloadLibraryFromDrive, mergeLibraries } from './drive'
 
 // Get the secure path where the OS allows our app to save data
 const userDataPath = app.getPath('userData')
@@ -51,17 +52,95 @@ function setupIpcHandlers() {
     }
   })
 
-  ipcMain.handle('save-library', async (_, data: LibraryData): Promise<boolean> => {
+  ipcMain.handle('save-library', async (event, data: LibraryData): Promise<boolean> => {
     try {
-      // Update the timestamp right before saving
       data.lastUpdated = new Date().toISOString()
-
-      // Write the file with 2-space formatting for readability
       await fs.writeFile(LIBRARY_FILE_PATH, JSON.stringify(data, null, 2), 'utf-8')
+
+      const isLoggedIn = await checkExistingAuth()
+
+      if (isLoggedIn) {
+        // 1. Tell React we started syncing
+        event.sender.send('sync-status-update', 'syncing')
+
+        // 2. Run background sync with retries
+        syncLibraryToDrive(data)
+          .then(() => {
+            // Tell React it worked
+            event.sender.send('sync-status-update', 'success')
+          })
+          .catch((err) => {
+            // Tell React all retries failed
+            console.error('Background sync permanently failed:', err)
+            event.sender.send('sync-status-update', 'error')
+          })
+      }
+
       return true
     } catch (error) {
-      console.error('Error saving library:', error)
       throw new Error('Failed to save library data')
+    }
+  })
+
+  ipcMain.handle('restore-from-cloud', async (): Promise<LibraryData | null> => {
+    try {
+      const isLoggedIn = await checkExistingAuth()
+      if (!isLoggedIn) return null
+
+      // 1. Read current Local Data
+      const localFileData = await fs.readFile(LIBRARY_FILE_PATH, 'utf-8')
+      const localData: LibraryData = JSON.parse(localFileData)
+
+      // 2. Download Cloud Data
+      const cloudData = await downloadLibraryFromDrive()
+
+      if (!cloudData) {
+        // No cloud data yet? Then Local is the absolute truth. Push it up.
+        await syncLibraryToDrive(localData)
+        return localData
+      }
+
+      // 3. SMART MERGE: Combine both histories
+      const mergedData = mergeLibraries(localData, cloudData)
+
+      // 4. Save merged result locally (Overwriting the old local file)
+      await fs.writeFile(LIBRARY_FILE_PATH, JSON.stringify(mergedData, null, 2), 'utf-8')
+
+      // 5. Push merged result back to Google Drive
+      // (We do this asynchronously in the background so the UI doesn't hang)
+      syncLibraryToDrive(mergedData).catch((err) =>
+        console.error('Post-merge cloud push failed:', err)
+      )
+
+      return mergedData
+    } catch (error) {
+      console.error('Cloud hydration/merge failed:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('force-sync', async (event): Promise<boolean> => {
+    try {
+      const isLoggedIn = await checkExistingAuth()
+      if (!isLoggedIn) return false
+
+      // 1. Tell React we are trying again
+      event.sender.send('sync-status-update', 'syncing')
+
+      // 2. Read the latest local data
+      const fileData = await fs.readFile(LIBRARY_FILE_PATH, 'utf-8')
+      const libraryData: LibraryData = JSON.parse(fileData)
+
+      // 3. Attempt the upload
+      await syncLibraryToDrive(libraryData)
+
+      // 4. Success!
+      event.sender.send('sync-status-update', 'success')
+      return true
+    } catch (error) {
+      console.error('Manual force sync failed:', error)
+      event.sender.send('sync-status-update', 'error')
+      return false
     }
   })
 
@@ -74,6 +153,21 @@ function setupIpcHandlers() {
     }
     return filePaths[0] // Return the selected folder path
   })
+
+  ipcMain.handle('login-google', async () => {
+    try {
+      return await loginToGoogle()
+    } catch (error) {
+      console.error('Login failed:', error)
+      throw new Error('Google Authentication Failed')
+    }
+  })
+
+  ipcMain.handle('check-google-auth', async () => await checkExistingAuth())
+  ipcMain.handle('logout-google', async () => await logoutFromGoogle())
+  ipcMain.handle('cancel-google-login', () => {
+    cancelGoogleLogin()
+  })
 }
 
 function createWindow(): void {
@@ -83,7 +177,7 @@ function createWindow(): void {
     height: 670,
     show: false,
     autoHideMenuBar: true,
-    ...(process.platform === 'linux' ? { icon } : {}),
+    ...(process.platform === 'linux' ? {} : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false

@@ -7,7 +7,17 @@ const api: ElectronAPI = {
   scanDirectory: (folderPath: string) => ipcRenderer.invoke('scan-directory', folderPath),
   loadLibrary: () => ipcRenderer.invoke('load-library'),
   saveLibrary: (data: LibraryData) => ipcRenderer.invoke('save-library', data),
-  selectFolder: () => ipcRenderer.invoke('select-folder')
+  selectFolder: () => ipcRenderer.invoke('select-folder'),
+  loginToGoogleDrive: () => ipcRenderer.invoke('login-google'),
+  checkGoogleAuth: () => ipcRenderer.invoke('check-google-auth'),
+  logoutGoogleDrive: () => ipcRenderer.invoke('logout-google'),
+  cancelGoogleLogin: () => ipcRenderer.invoke('cancel-google-login'),
+  onSyncStatusUpdate: (callback) => {
+    // Strip the event object and just pass the status string to React
+    ipcRenderer.on('sync-status-update', (_event, status) => callback(status))
+  },
+  forceSync: () => ipcRenderer.invoke('force-sync'),
+  restoreFromCloud: () => ipcRenderer.invoke('restore-from-cloud')
 }
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise
