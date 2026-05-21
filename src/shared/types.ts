@@ -18,6 +18,8 @@ export interface ElectronAPI {
   forceSync: () => Promise<boolean>
   restoreFromCloud: () => Promise<LibraryData | null>
   scanSaveDirectory: (folderPath: string) => Promise<ScannedFolder | null>
+  syncGameSave: (gameId: number, files: ScannedFile[]) => Promise<boolean>
+  onSaveProgress: (gameId: number, callback: (percent: number) => void) => () => void // Returns a cleanup function
 }
 
 export type GameStatus = 'playing' | 'planning' | 'paused' | 'completed' | 'dropped'

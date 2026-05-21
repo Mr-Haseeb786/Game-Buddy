@@ -18,7 +18,19 @@ const api: ElectronAPI = {
   },
   forceSync: () => ipcRenderer.invoke('force-sync'),
   restoreFromCloud: () => ipcRenderer.invoke('restore-from-cloud'),
-  scanSaveDirectory: (folderPath) => ipcRenderer.invoke('scan-save-directory', folderPath)
+  scanSaveDirectory: (folderPath) => ipcRenderer.invoke('scan-save-directory', folderPath),
+  syncGameSave: (gameId, files) => ipcRenderer.invoke('sync-game-save', gameId, files),
+
+  onSaveProgress: (gameId, callback) => {
+    const channel = `save-progress-${gameId}`
+    const listener = (_event: any, percent: number) => callback(percent)
+    ipcRenderer.on(channel, listener)
+
+    // Return a function so React can clean up the listener when the component unmounts
+    return () => {
+      ipcRenderer.removeListener(channel, listener)
+    }
+  }
 }
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise

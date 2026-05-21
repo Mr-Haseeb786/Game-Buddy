@@ -3,9 +3,15 @@ import { join } from 'path'
 import fs from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 
-import { FileNode, LibraryData } from '../shared/types'
+import { FileNode, LibraryData, ScannedFile } from '../shared/types'
 import { loginToGoogle, checkExistingAuth, logoutFromGoogle, cancelGoogleLogin } from './auth'
-import { syncLibraryToDrive, downloadLibraryFromDrive, mergeLibraries } from './drive'
+import {
+  syncLibraryToDrive,
+  downloadLibraryFromDrive,
+  mergeLibraries,
+  uploadSaveToDrive,
+  testListHiddenFiles
+} from './drive'
 import { scanSaveDirectory } from './scanner'
 
 // Get the secure path where the OS allows our app to save data
@@ -175,11 +181,59 @@ function setupIpcHandlers() {
     }
   })
 
+  ipcMain.handle(
+    'sync-game-save',
+    async (event, gameId: number, files: ScannedFile[]): Promise<boolean> => {
+      try {
+        // 1. Read the current library to get the game's details
+        const fileData = await fs.readFile(LIBRARY_FILE_PATH, 'utf-8')
+        const libraryData = JSON.parse(fileData)
+        const game = libraryData.games[gameId]
+
+        if (!game) throw new Error('Game not found in library')
+
+        // 2. Define the progress callback to send events to React
+        const handleProgress = (percent: number) => {
+          event.sender.send(`save-progress-${gameId}`, percent)
+        }
+
+        // 3. Run the Streaming Engine
+        const cloudSaveId = await uploadSaveToDrive(
+          game.title,
+          files,
+          game.cloudSaveId,
+          handleProgress
+        )
+
+        // 4. Update the game metadata
+        game.cloudSaveId = cloudSaveId
+        game.updatedAt = Date.now()
+
+        // 5. Save the updated library locally and let the background JSON sync push it
+        await fs.writeFile(LIBRARY_FILE_PATH, JSON.stringify(libraryData, null, 2), 'utf-8')
+        syncLibraryToDrive(libraryData).catch((err) =>
+          console.error('Background JSON sync failed:', err)
+        )
+
+        return true
+      } catch (error) {
+        console.error('Failed to sync game save:', error)
+        throw new Error('Save upload failed')
+      }
+    }
+  )
+
   ipcMain.handle('check-google-auth', async () => await checkExistingAuth())
   ipcMain.handle('logout-google', async () => await logoutFromGoogle())
   ipcMain.handle('cancel-google-login', () => {
     cancelGoogleLogin()
   })
+
+  // Temporary testing function
+  // TODO: Hooking up the UI of the zipping logic
+  setTimeout(() => {
+    testListHiddenFiles()
+  }, 5000)
 }
 
 function createWindow(): void {
