@@ -17,7 +17,8 @@ const api: ElectronAPI = {
     ipcRenderer.on('sync-status-update', (_event, status) => callback(status))
   },
   forceSync: () => ipcRenderer.invoke('force-sync'),
-  restoreFromCloud: () => ipcRenderer.invoke('restore-from-cloud')
+  restoreFromCloud: () => ipcRenderer.invoke('restore-from-cloud'),
+  scanSaveDirectory: (folderPath) => ipcRenderer.invoke('scan-save-directory', folderPath)
 }
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise

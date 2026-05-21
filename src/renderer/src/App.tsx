@@ -8,6 +8,7 @@ import { GameStatus } from '../../shared/types'
 import { ManageGameModal } from './components/ManageGameModal'
 import { Cloud, CloudOff, CloudDrizzle, AlertTriangle } from 'lucide-react'
 import { SyncStatus } from '../../shared/types'
+import BackupModal from './components/BackUpModal'
 
 export default function App() {
   const [files, setFiles] = useState<FileNode[]>([])
@@ -21,6 +22,8 @@ export default function App() {
 
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isAuthenticating, setIsAuthenticating] = useState(true)
+
+  const [backingUpGame, setBackingUpGame] = useState<GameEntry | null>(null)
 
   // Load the library when the app opens
   useEffect(() => {
@@ -62,6 +65,20 @@ export default function App() {
 
     checkAuthAndHydrate()
   }, [])
+
+  const handleTestBackup = () => {
+    // Create a fake game entry just to trigger the UI
+    setBackingUpGame({
+      rawgId: 9999,
+      title: 'Test Game',
+      status: 'playing',
+      timePlayedMinutes: 0,
+      savePathDesktop: null, // Null forces it to open the folder picker!
+      saveExtension: null,
+      updatedAt: Date.now(),
+      cloudSaveId: null
+    })
+  }
 
   const renderCloudUI = () => {
     if (!isAuthenticated) {
@@ -159,7 +176,9 @@ export default function App() {
       status: selectedStatus, // Dynamically assign the chosen status
       timePlayedMinutes: 0,
       savePathDesktop: null,
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
+      saveExtension: null,
+      cloudSaveId: null
     }
 
     const updatedLibrary: LibraryData = {
@@ -229,6 +248,19 @@ export default function App() {
         />
       )}
 
+      {/* NEW: Render the Backup Modal */}
+      {backingUpGame && (
+        <BackupModal
+          game={backingUpGame}
+          onClose={() => setBackingUpGame(null)}
+          onSync={(checkedFiles) => {
+            console.log('READY TO ZIP THESE FILES:', checkedFiles)
+            alert(`Ready to zip ${checkedFiles.length} files. Check the console!`)
+            setBackingUpGame(null)
+          }}
+        />
+      )}
+
       <div className="max-w-6xl mx-auto">
         {/* Cloud Sync Header Bar */}
         <div className="flex justify-between items-center bg-gray-800 p-4 rounded-lg border border-gray-700 mb-8 shadow-md">
@@ -256,6 +288,13 @@ export default function App() {
               </p>
             </div>
           </div>
+
+          <button
+            onClick={handleTestBackup}
+            className="mb-8 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded font-medium shadow"
+          >
+            TEST BACKUP ENGINE
+          </button>
 
           <div>
             {isAuthenticated ? (

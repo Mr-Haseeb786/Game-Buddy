@@ -6,6 +6,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { FileNode, LibraryData } from '../shared/types'
 import { loginToGoogle, checkExistingAuth, logoutFromGoogle, cancelGoogleLogin } from './auth'
 import { syncLibraryToDrive, downloadLibraryFromDrive, mergeLibraries } from './drive'
+import { scanSaveDirectory } from './scanner'
 
 // Get the secure path where the OS allows our app to save data
 const userDataPath = app.getPath('userData')
@@ -160,6 +161,17 @@ function setupIpcHandlers() {
     } catch (error) {
       console.error('Login failed:', error)
       throw new Error('Google Authentication Failed')
+    }
+  })
+
+  ipcMain.handle('scan-save-directory', async (_, folderPath: string) => {
+    try {
+      // Run the pre-flight scan
+      const tree = await scanSaveDirectory(folderPath)
+      return tree
+    } catch (error) {
+      console.error('Failed to scan save directory:', error)
+      throw new Error('Failed to read save folder. Check permissions.')
     }
   })
 
