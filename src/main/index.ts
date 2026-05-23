@@ -92,43 +92,6 @@ function setupIpcHandlers() {
     }
   })
 
-  ipcMain.handle('restore-from-cloud', async (): Promise<LibraryData | null> => {
-    try {
-      const isLoggedIn = await checkExistingAuth()
-      if (!isLoggedIn) return null
-
-      // 1. Read current Local Data
-      const localFileData = await fs.readFile(LIBRARY_FILE_PATH, 'utf-8')
-      const localData: LibraryData = JSON.parse(localFileData)
-
-      // 2. Download Cloud Data
-      const cloudData = await downloadLibraryFromDrive()
-
-      if (!cloudData) {
-        // No cloud data yet? Then Local is the absolute truth. Push it up.
-        await syncLibraryToDrive(localData)
-        return localData
-      }
-
-      // 3. SMART MERGE: Combine both histories
-      const mergedData = mergeLibraries(localData, cloudData)
-
-      // 4. Save merged result locally (Overwriting the old local file)
-      await fs.writeFile(LIBRARY_FILE_PATH, JSON.stringify(mergedData, null, 2), 'utf-8')
-
-      // 5. Push merged result back to Google Drive
-      // (We do this asynchronously in the background so the UI doesn't hang)
-      syncLibraryToDrive(mergedData).catch((err) =>
-        console.error('Post-merge cloud push failed:', err)
-      )
-
-      return mergedData
-    } catch (error) {
-      console.error('Cloud hydration/merge failed:', error)
-      throw error
-    }
-  })
-
   ipcMain.handle('force-sync', async (event): Promise<boolean> => {
     try {
       const isLoggedIn = await checkExistingAuth()
