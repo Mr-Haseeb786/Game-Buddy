@@ -20,6 +20,10 @@ export interface ElectronAPI {
   scanSaveDirectory: (folderPath: string) => Promise<ScannedFolder | null>
   syncGameSave: (gameId: number, files: ScannedFile[]) => Promise<boolean>
   onSaveProgress: (gameId: number, callback: (percent: number) => void) => () => void // Returns a cleanup function
+  restoreGameSave: (gameId: number, gameTitle: string, cloudSaveId: string) => Promise<boolean>
+  onRestoreProgress: (gameId: number, callback: (percent: number) => void) => () => void
+  getCloudStorageStats: () => Promise<CloudSaveStat[]>
+  deleteCloudSave: (fileId: string) => Promise<boolean>
 }
 
 export type GameStatus = 'playing' | 'planning' | 'paused' | 'completed' | 'dropped'
@@ -57,4 +61,11 @@ export interface ScannedFolder {
   relativePath: string
   files: ScannedFile[]
   subfolders: ScannedFolder[]
+}
+
+export interface CloudSaveStat {
+  id: string
+  name: string
+  sizeBytes: number
+  modifiedTime: string // ISO Date string from Google
 }

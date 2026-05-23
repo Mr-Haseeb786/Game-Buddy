@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import { FileNode, ElectronAPI, LibraryData } from '../shared/types'
+import { ElectronAPI, LibraryData } from '../shared/types'
 
 // Build the API object conforming to our strict interface
 const api: ElectronAPI = {
@@ -30,7 +30,18 @@ const api: ElectronAPI = {
     return () => {
       ipcRenderer.removeListener(channel, listener)
     }
-  }
+  },
+  restoreGameSave: (gameId, gameTitle, cloudSaveId) =>
+    ipcRenderer.invoke('restore-game-save', gameId, gameTitle, cloudSaveId),
+
+  onRestoreProgress: (gameId, callback) => {
+    const channel = `restore-progress-${gameId}`
+    const listener = (_event: any, percent: number) => callback(percent)
+    ipcRenderer.on(channel, listener)
+    return () => ipcRenderer.removeListener(channel, listener)
+  },
+  getCloudStorageStats: () => ipcRenderer.invoke('get-cloud-stats'),
+  deleteCloudSave: (fileId) => ipcRenderer.invoke('delete-cloud-save', fileId)
 }
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise

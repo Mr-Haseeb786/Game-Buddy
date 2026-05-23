@@ -3,14 +3,17 @@ import { join } from 'path'
 import fs from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 
-import { FileNode, LibraryData, ScannedFile } from '../shared/types'
+import { CloudSaveStat, FileNode, LibraryData, ScannedFile } from '../shared/types'
 import { loginToGoogle, checkExistingAuth, logoutFromGoogle, cancelGoogleLogin } from './auth'
 import {
   syncLibraryToDrive,
   downloadLibraryFromDrive,
   mergeLibraries,
   uploadSaveToDrive,
-  testListHiddenFiles
+  testListHiddenFiles,
+  downloadSaveFromDrive,
+  getCloudStorageStats,
+  deleteCloudSave
 } from './drive'
 import { scanSaveDirectory } from './scanner'
 
@@ -222,6 +225,100 @@ function setupIpcHandlers() {
       }
     }
   )
+
+  ipcMain.handle(
+    'restore-game-save',
+    async (event, gameId: number, gameTitle: string, cloudSaveId: string): Promise<boolean> => {
+      try {
+        // 1. Ask the user where they want to save the ZIP file
+        const { canceled, filePath } = await dialog.showSaveDialog({
+          title: `Download ${gameTitle} Save Data`,
+          defaultPath: `${gameTitle.replace(/[^a-z0-9]/gi, '_')}_Backup.zip`,
+          filters: [{ name: 'ZIP Archives', extensions: ['zip'] }]
+        })
+
+        // 2. If they hit "Cancel", just abort gracefully
+        if (canceled || !filePath) return false
+
+        // 3. Set up the progress event sender
+        const handleProgress = (percent: number) => {
+          event.sender.send(`restore-progress-${gameId}`, percent)
+        }
+
+        // 4. Execute the stream!
+        await downloadSaveFromDrive(cloudSaveId, filePath, handleProgress)
+
+        // 5. Open the folder automatically to show them the downloaded file (Great UX!)
+        shell.showItemInFolder(filePath)
+
+        return true
+      } catch (error) {
+        console.error('Failed to restore game save:', error)
+        throw new Error('Save download failed')
+      }
+    }
+  )
+
+  ipcMain.handle('restore-from-cloud', async (): Promise<LibraryData | null> => {
+    try {
+      const isLoggedIn = await checkExistingAuth()
+      if (!isLoggedIn) return null
+
+      // 1. Read current Local Data
+      const localFileData = await fs.readFile(LIBRARY_FILE_PATH, 'utf-8').catch(() => null)
+      const localData: LibraryData = localFileData ? JSON.parse(localFileData) : getEmptyLibrary()
+
+      // 2. Download Cloud Data
+      const cloudData = await downloadLibraryFromDrive()
+
+      // 3. SMART MERGE: Combine both histories (Local wins ties)
+      const mergedData = cloudData ? mergeLibraries(localData, cloudData) : localData
+
+      // 4. THE SELF-HEALING SWEEP (NEW)
+      // Fetch all physical ZIPs sitting in Google Drive
+      const cloudFiles = await getCloudStorageStats()
+
+      let needsPush = false
+      Object.values(mergedData.games).forEach((game) => {
+        const expectedName = `${game.title.replace(/[^a-z0-9]/gi, '_')}_save.zip`
+        const match = cloudFiles.find((f) => f.name === expectedName)
+
+        // Scenario A: Found an orphan file in Drive, link it!
+        if (!game.cloudSaveId && match) {
+          game.cloudSaveId = match.id
+          needsPush = true
+        }
+        // Scenario B: JSON says a file exists, but it was deleted from Drive. Unlink it!
+        else if (game.cloudSaveId && !match) {
+          game.cloudSaveId = null
+          needsPush = true
+        }
+      })
+
+      // 5. Save merged & healed result locally
+      await fs.writeFile(LIBRARY_FILE_PATH, JSON.stringify(mergedData, null, 2), 'utf-8')
+
+      // 6. Push back to Cloud ONLY if we made healing changes or merged new data
+      if (needsPush || cloudData) {
+        syncLibraryToDrive(mergedData).catch((err) =>
+          console.error('Post-merge cloud push failed:', err)
+        )
+      }
+
+      return mergedData
+    } catch (error) {
+      console.error('Cloud hydration/merge failed:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('get-cloud-stats', async (): Promise<CloudSaveStat[]> => {
+    return await getCloudStorageStats()
+  })
+
+  ipcMain.handle('delete-cloud-save', async (_, fileId: string): Promise<boolean> => {
+    return await deleteCloudSave(fileId)
+  })
 
   ipcMain.handle('check-google-auth', async () => await checkExistingAuth())
   ipcMain.handle('logout-google', async () => await logoutFromGoogle())

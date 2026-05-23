@@ -1,1 +1,32 @@
 @import 'tailwindcss';
+
+/* --- CUSTOM SCROLLBAR FOR ELECTRON (CHROMIUM) --- */
+
+/* 1. Set the overall width and height of the scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px; /* Vertical scrollbar width */
+  height: 8px; /* Horizontal scrollbar height */
+}
+
+/* 2. Style the track (the gutter the scrollbar sits in) */
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #0f1115; /* Matches your modal's inner background */
+  border-radius: 8px;
+}
+
+/* 3. Style the thumb (the part you actually click and drag) */
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #374151; /* Tailwind gray-700 */
+  border-radius: 8px;
+  border: 2px solid #0f1115; /* Creates a nice padding effect around the thumb */
+}
+
+/* 4. Style the thumb when hovering over it */
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #4b5563; /* Tailwind gray-600 */
+}
+
+/* 5. Hide the top/bottom arrows */
+.custom-scrollbar::-webkit-scrollbar-button {
+  display: none;
+}

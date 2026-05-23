@@ -1,18 +1,20 @@
 import { useState } from 'react'
 import { GameEntry, GameStatus } from '../../../shared/types'
-import { X, FolderOpen, Trash2, Save } from 'lucide-react'
+import { X, FolderOpen, Trash2, Save, AlertTriangle } from 'lucide-react'
 
 interface ManageGameModalProps {
   game: GameEntry
   onClose: () => void
   onUpdate: (updatedGame: GameEntry) => void
-  onRemove: (rawgId: number) => void
+  onRemove: (rawgId: number, deleteFromCloud: boolean) => void
 }
 
 export function ManageGameModal({ game, onClose, onUpdate, onRemove }: ManageGameModalProps) {
   const [status, setStatus] = useState<GameStatus>(game.status)
   const [playtime, setPlaytime] = useState<number>(game.timePlayedMinutes)
   const [savePath, setSavePath] = useState<string | null>(game.savePathDesktop)
+  const [showDeleteWarning, setShowDeleteWarning] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
 
   const handleSelectFolder = async () => {
     const folder = await window.api.selectFolder()
@@ -30,9 +32,9 @@ export function ManageGameModal({ game, onClose, onUpdate, onRemove }: ManageGam
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-800 border border-gray-700 rounded-lg w-full max-w-md overflow-hidden shadow-2xl">
+      <div className="bg-[#1a1f2e] rounded-lg shadow-xl w-full max-w-md flex flex-col max-h-[90vh] border border-gray-700">
         {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-900">
+        <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-[#1a1f2e] rounded-t-lg shrink-0">
           <h2 className="text-xl font-bold text-white truncate pr-4">{game.title}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
             <X size={24} />
@@ -40,7 +42,7 @@ export function ManageGameModal({ game, onClose, onUpdate, onRemove }: ManageGam
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
           {/* Status Select */}
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-1">Play Status</label>
@@ -96,29 +98,84 @@ export function ManageGameModal({ game, onClose, onUpdate, onRemove }: ManageGam
           </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="p-4 border-t border-gray-700 bg-gray-900 flex justify-between">
-          <button
-            onClick={() => onRemove(game.rawgId)}
-            className="text-red-400 hover:bg-red-900/30 px-3 py-2 rounded flex items-center gap-2 transition-colors text-sm font-medium"
-          >
-            <Trash2 size={16} /> Remove Game
-          </button>
+        {/* Footer / Danger Zone */}
+        <div className="p-6 border-t border-gray-800 bg-gray-900 rounded-b-lg shrink-0">
+          {showDeleteWarning ? (
+            <div className="bg-red-900/20 border border-red-900/50 p-4 rounded-lg animate-in fade-in slide-in-from-bottom-2 duration-200">
+              <h4 className="text-red-400 font-bold flex items-center gap-2 mb-2">
+                <AlertTriangle size={18} /> Danger Zone
+              </h4>
+              <p className="text-sm text-gray-300 mb-4">
+                You are about to remove <strong className="text-white">{game.title}</strong> from
+                your tracked library.
+                {game.cloudSaveId && (
+                  <span className="block mt-1 text-red-300">
+                    This game currently has a backed-up save file in your Google Drive.
+                  </span>
+                )}
+              </p>
 
-          <div className="flex gap-2">
-            <button
-              onClick={onClose}
-              className="text-gray-300 hover:bg-gray-800 px-4 py-2 rounded transition-colors text-sm font-medium"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded flex items-center gap-2 transition-colors text-sm font-medium"
-            >
-              <Save size={16} /> Save Changes
-            </button>
-          </div>
+              <div className="flex flex-col gap-2">
+                {/* Option 1: Safe Removal */}
+                <button
+                  onClick={() => {
+                    setIsProcessing(true)
+                    onRemove(game.rawgId, false)
+                  }}
+                  disabled={isProcessing}
+                  className="w-full py-2 bg-gray-800 hover:bg-gray-700 text-white rounded font-medium transition-colors text-sm border border-gray-700 disabled:opacity-50"
+                >
+                  Remove from Local Library Only (Keep Cloud Save)
+                </button>
+
+                {/* Option 2: Destructive Removal (Only show if cloud save exists) */}
+                {game.cloudSaveId && (
+                  <button
+                    onClick={() => {
+                      setIsProcessing(true)
+                      onRemove(game.rawgId, true)
+                    }}
+                    disabled={isProcessing}
+                    className="w-full py-2 bg-red-600 hover:bg-red-500 text-white rounded font-medium transition-colors text-sm flex justify-center items-center gap-2 shadow-lg disabled:opacity-50"
+                  >
+                    <Trash2 size={16} /> Delete Local Entry & Cloud Save
+                  </button>
+                )}
+
+                {/* Cancel */}
+                <button
+                  onClick={() => setShowDeleteWarning(false)}
+                  disabled={isProcessing}
+                  className="w-full py-2 text-gray-500 hover:text-white transition-colors text-sm mt-2 font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex justify-between items-center">
+              <button
+                onClick={() => setShowDeleteWarning(true)}
+                className="text-sm font-medium text-red-500 hover:text-red-400 transition-colors"
+              >
+                Remove Game
+              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-medium transition-colors shadow-lg"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

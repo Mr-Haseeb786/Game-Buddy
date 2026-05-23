@@ -9,6 +9,7 @@ import { ManageGameModal } from './components/ManageGameModal'
 import { Cloud, CloudOff, CloudDrizzle, AlertTriangle } from 'lucide-react'
 import { SyncStatus } from '../../shared/types'
 import BackupModal from './components/BackUpModal'
+import CloudManagerModal from './components/CloudManagerModal'
 
 export default function App() {
   const [files, setFiles] = useState<FileNode[]>([])
@@ -24,6 +25,7 @@ export default function App() {
   const [isAuthenticating, setIsAuthenticating] = useState(true)
 
   const [backingUpGame, setBackingUpGame] = useState<GameEntry | null>(null)
+  const [showCloudManager, setShowCloudManager] = useState(false)
 
   // Load the library when the app opens
   useEffect(() => {
@@ -67,17 +69,51 @@ export default function App() {
   }, [])
 
   const handleTestBackup = () => {
-    // Create a fake game entry just to trigger the UI
-    setBackingUpGame({
-      rawgId: 9999,
-      title: 'Test Game',
-      status: 'playing',
-      timePlayedMinutes: 0,
-      savePathDesktop: null, // Null forces it to open the folder picker!
-      saveExtension: null,
-      updatedAt: Date.now(),
-      cloudSaveId: null
-    })
+    // 1. Check if the library is loaded
+    if (!library) {
+      alert('Library is still loading...')
+      return
+    }
+
+    // 2. Grab the first actual game in your library
+    const firstRealGame = Object.values(library.games)[0]
+
+    if (!firstRealGame) {
+      alert('Please search for and add at least one real game to your library first!')
+      return
+    }
+
+    // 3. Trigger the modal with the real game
+    setBackingUpGame(firstRealGame)
+  }
+
+  // Temporary Test Function for the Download Engine
+  const handleTestRestore = async () => {
+    if (!library) {
+      alert("Library data hasn't loaded yet!")
+      return
+    }
+
+    // Find the first game in your library that has successfully backed up to the cloud
+    const gameToRestore = Object.values(library.games).find((g) => g.cloudSaveId)
+
+    if (!gameToRestore || !gameToRestore.cloudSaveId) {
+      alert('No cloud saves found in library.json! Run the Backup test first.')
+      return
+    }
+
+    console.log(`Attempting to restore: ${gameToRestore.title}`)
+
+    // Trigger the native IPC bridge
+    const success = await window.api.restoreGameSave(
+      gameToRestore.rawgId,
+      gameToRestore.title,
+      gameToRestore.cloudSaveId
+    )
+
+    if (success) {
+      console.log('Restore complete!')
+    }
   }
 
   const renderCloudUI = () => {
@@ -166,71 +202,186 @@ export default function App() {
     await window.api.forceSync()
   }
 
+  const handleOnSync = async (checkedFiles) => {
+    if (!backingUpGame) {
+      return alert('Backing Up game is null')
+    }
+
+    try {
+      console.log(`Starting zip and upload for ${checkedFiles.length} files...`)
+
+      // 1. Start listening to the live progress stream from Node.js
+      const cleanupListener = window.api.onSaveProgress(backingUpGame.rawgId, (percent) => {
+        console.log(`Upload Progress: ${percent}%`)
+        // (Later, we can tie this to a real progress bar UI!)
+      })
+
+      // 2. Trigger the actual Zipping & Uploading Engine
+      const success = await window.api.syncGameSave(backingUpGame.rawgId, checkedFiles)
+
+      // 3. Clean up and close
+      cleanupListener()
+      if (success) {
+        alert('Backup successfully zipped and uploaded to Google Drive!')
+      }
+      setBackingUpGame(null)
+    } catch (error) {
+      console.error('Backup failed:', error)
+      alert('Failed to upload backup. Check the console for details.')
+    }
+  }
+
+  const handlePullFromCloud = async () => {
+    setIsAuthenticating(true) // Reuse this state to show a loading spinner
+    try {
+      const freshLibrary = await window.api.restoreFromCloud()
+      if (freshLibrary) {
+        setLibrary(freshLibrary)
+        setSyncState('success')
+      }
+    } catch (error) {
+      console.error('Failed to pull from cloud:', error)
+      alert('Failed to sync with Google Drive.')
+    } finally {
+      setIsAuthenticating(false)
+    }
+  }
+
   // The core transformation and save function
   const handleAddGameFromSearch = async (rawgGame: RawgGame, selectedStatus: GameStatus) => {
-    if (!library) return
+    // 1. Generate the exact filename the Backup Engine would have used
+    const expectedFileName = `${rawgGame.name.replace(/[^a-z0-9]/gi, '_')}_save.zip`
 
-    const newGame: GameEntry = {
-      rawgId: rawgGame.id,
-      title: rawgGame.name,
-      status: selectedStatus, // Dynamically assign the chosen status
-      timePlayedMinutes: 0,
-      savePathDesktop: null,
-      updatedAt: Date.now(),
-      saveExtension: null,
-      cloudSaveId: null
-    }
+    // 2. Check the cloud for this exact file (Orphan Recovery)
+    let recoveredCloudId: string | null = null
 
-    const updatedLibrary: LibraryData = {
-      ...library,
-      games: {
-        ...library.games,
-        [newGame.rawgId]: newGame
+    try {
+      // Only attempt recovery if the user is actually linked to Google Drive
+      if (isAuthenticated) {
+        const cloudFiles = await window.api.getCloudStorageStats()
+        const orphanMatch = cloudFiles.find((file) => file.name === expectedFileName)
+
+        if (orphanMatch) {
+          recoveredCloudId = orphanMatch.id
+          console.log(`Orphan save automatically recovered for ${rawgGame.name}!`)
+        }
       }
+    } catch (error) {
+      console.error('Failed to check for orphaned cloud saves:', error)
+      // We don't want to block the user from adding the game if the network drops,
+      // so we just catch the error and let recoveredCloudId remain null.
     }
 
-    const success = await window.api.saveLibrary(updatedLibrary)
-    if (success) {
-      setLibrary(updatedLibrary)
-    }
+    // 3. Bulletproof Add Game logic using functional state update
+    setLibrary((prev) => {
+      if (!prev) return prev
+
+      const newGame: GameEntry = {
+        rawgId: rawgGame.id,
+        title: rawgGame.name,
+        status: selectedStatus,
+        timePlayedMinutes: 0,
+        savePathDesktop: null,
+        updatedAt: Date.now(),
+        saveExtension: null,
+        cloudSaveId: recoveredCloudId // THE MAGIC HAPPENS HERE
+      }
+
+      const updatedLibrary: LibraryData = {
+        ...prev,
+        games: { ...prev.games, [newGame.rawgId]: newGame }
+      }
+
+      // Fire and forget save
+      window.api.saveLibrary(updatedLibrary).catch(console.error)
+      return updatedLibrary
+    })
   }
 
   // Update an existing game
   const handleUpdateGame = async (updatedGame: GameEntry) => {
-    if (!library) return
+    setLibrary((prev) => {
+      if (!prev) return prev
 
-    const updatedLibrary: LibraryData = {
-      ...library,
-      games: {
-        ...library.games,
-        [updatedGame.rawgId]: updatedGame
+      const updatedLibrary: LibraryData = {
+        ...prev,
+        games: { ...prev.games, [updatedGame.rawgId]: updatedGame }
       }
-    }
 
-    const success = await window.api.saveLibrary(updatedLibrary)
-    if (success) {
-      setLibrary(updatedLibrary)
-      setManagingGame(null) // Close the modal on success
-    }
+      window.api.saveLibrary(updatedLibrary).catch(console.error)
+      setManagingGame(null) // Close the modal
+      return updatedLibrary
+    })
   }
 
   // Remove a game
-  const handleRemoveGame = async (rawgId: number) => {
-    if (!library) return
+  const handleRemoveGame = async (rawgId: number, deleteFromCloud: boolean) => {
+    // 1. Grab the latest target game safely
+    const gameToRemove = library?.games[rawgId]
 
-    const updatedGames = { ...library.games }
-    delete updatedGames[rawgId] // Remove the key
-
-    const updatedLibrary: LibraryData = {
-      ...library,
-      games: updatedGames
+    // 2. If requested, permanently delete the save from Google Drive first
+    if (deleteFromCloud && gameToRemove?.cloudSaveId) {
+      try {
+        await window.api.deleteCloudSave(gameToRemove.cloudSaveId)
+        console.log(`Successfully deleted cloud save for ${gameToRemove.title}`)
+      } catch (error) {
+        console.error('Failed to delete cloud save:', error)
+        alert('Failed to delete the save from Google Drive. Aborting removal to protect data.')
+        return // Safety Abort: Don't remove it locally if the cloud deletion failed
+      }
     }
 
-    const success = await window.api.saveLibrary(updatedLibrary)
-    if (success) {
-      setLibrary(updatedLibrary)
-      setManagingGame(null) // Close the modal on success
-    }
+    // 3. Bulletproof local removal using functional state update
+    setLibrary((prev) => {
+      if (!prev) return prev
+
+      const updatedGames = { ...prev.games }
+      delete updatedGames[rawgId]
+
+      const updatedLibrary: LibraryData = {
+        ...prev,
+        games: updatedGames
+      }
+
+      window.api.saveLibrary(updatedLibrary).catch(console.error)
+      setManagingGame(null) // Close the modal
+      return updatedLibrary
+    })
+  }
+
+  const handleCloudSaveDeleted = (deletedFileId: string) => {
+    // By passing a function into setLibrary, we bypass any stale closures
+    // and guarantee we are working with React's absolute latest state.
+    setLibrary((prevLibrary) => {
+      if (!prevLibrary) return prevLibrary
+
+      let hasChanges = false
+      const updatedGames = { ...prevLibrary.games }
+
+      // Search for any game linked to this deleted file and unlink it
+      Object.values(updatedGames).forEach((game) => {
+        if (game.cloudSaveId === deletedFileId) {
+          updatedGames[game.rawgId] = { ...game, cloudSaveId: null }
+          hasChanges = true
+        }
+      })
+
+      if (hasChanges) {
+        const updatedLibrary: LibraryData = {
+          ...prevLibrary,
+          games: updatedGames
+        }
+
+        // Fire and forget: Tell the backend to save this new truth to the hard drive
+        window.api.saveLibrary(updatedLibrary).catch(console.error)
+
+        // The magic happens here: Returning this forces React to instantly
+        // re-render the Library Grid and Modals with the fresh data!
+        return updatedLibrary
+      }
+
+      return prevLibrary
+    })
   }
 
   if (!library) return <div className="p-8 text-white">Loading library...</div>
@@ -248,15 +399,43 @@ export default function App() {
         />
       )}
 
+      {showCloudManager && (
+        <CloudManagerModal
+          onClose={() => setShowCloudManager(false)}
+          onFileDeleted={handleCloudSaveDeleted}
+        />
+      )}
+
       {/* NEW: Render the Backup Modal */}
       {backingUpGame && (
         <BackupModal
           game={backingUpGame}
           onClose={() => setBackingUpGame(null)}
-          onSync={(checkedFiles) => {
-            console.log('READY TO ZIP THESE FILES:', checkedFiles)
-            alert(`Ready to zip ${checkedFiles.length} files. Check the console!`)
-            setBackingUpGame(null)
+          onSync={async (checkedFiles) => {
+            try {
+              console.log(`Starting zip and upload for ${checkedFiles.length} files...`)
+
+              // 1. Start listening to the live progress stream from Node.js
+              const cleanupListener = window.api.onSaveProgress(backingUpGame.rawgId, (percent) => {
+                console.log(`Upload Progress: ${percent}%`)
+                // (Later, we can tie this to a real progress bar UI!)
+              })
+
+              // 2. Trigger the actual Zipping & Uploading Engine
+              const success = await window.api.syncGameSave(backingUpGame.rawgId, checkedFiles)
+
+              // 3. Clean up and close
+              cleanupListener()
+              if (success) {
+                const freshLibrary = await window.api.loadLibrary()
+                setLibrary(freshLibrary)
+                alert('Backup successfully zipped and uploaded to Google Drive!')
+              }
+              setBackingUpGame(null)
+            } catch (error) {
+              console.error('Backup failed:', error)
+              alert('Failed to upload backup. Check the console for details.')
+            }
           }}
         />
       )}
@@ -289,11 +468,19 @@ export default function App() {
             </div>
           </div>
 
+          {/* TEMPORARY TEST BUTTONS */}
           <button
             onClick={handleTestBackup}
-            className="mb-8 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded font-medium shadow"
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded font-medium shadow"
           >
             TEST BACKUP ENGINE
+          </button>
+
+          <button
+            onClick={handleTestRestore}
+            className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded font-medium shadow"
+          >
+            TEST RESTORE ENGINE
           </button>
 
           <div>
@@ -308,11 +495,25 @@ export default function App() {
                     Retry Sync
                   </button>
                 )}
+                {/* NEW: Pull & Heal from Cloud */}
+                <button
+                  onClick={handlePullFromCloud}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-medium text-sm transition-colors shadow-lg"
+                >
+                  Sync with Cloud Library
+                </button>
                 <button
                   onClick={handleGoogleLogout}
                   className="px-4 py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 rounded font-medium text-sm transition-colors border border-red-900/50"
                 >
                   Unlink Account
+                </button>
+                {/* NEW: Cloud Storage Manager Button */}
+                <button
+                  onClick={() => setShowCloudManager(true)}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded font-medium text-sm transition-colors border border-gray-600"
+                >
+                  Manage Storage
                 </button>
               </div>
             ) : isAuthenticating ? (

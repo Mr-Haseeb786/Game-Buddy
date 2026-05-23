@@ -1,7 +1,8 @@
 import { google } from 'googleapis'
 import { oauth2Client } from './auth'
-import { GameEntry, LibraryData, ScannedFile } from '../shared/types'
-import archiver from 'archiver'
+import { CloudSaveStat, GameEntry, LibraryData, ScannedFile } from '../shared/types'
+import { createWriteStream, createReadStream } from 'fs'
+import JSZip from 'jszip'
 
 // Initialize the Drive API client
 const drive = google.drive({ version: 'v3', auth: oauth2Client })
@@ -89,73 +90,103 @@ export async function uploadSaveToDrive(
   existingCloudSaveId: string | null,
   onProgress: (percent: number) => void
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
-    // 1. Calculate total bytes for the progress bar
-    const totalBytes = filesToZip.reduce((sum, file) => sum + file.sizeBytes, 0)
+  return new Promise(async (resolve, reject) => {
+    try {
+      const zip = new JSZip()
 
-    // 2. Initialize the Archiver stream
-    const archive = archiver('zip', {
-      zlib: { level: 9 } // Maximum compression
-    })
+      // 1. Append files as Readable Streams.
+      // This forces JSZip to read them piece-by-piece, keeping RAM usage near zero.
+      filesToZip.forEach((file) => {
+        zip.file(file.relativePath || file.name, createReadStream(file.absolutePath))
+      })
 
-    archive.on('error', (err) => reject(err))
-
-    // 3. Track progress and emit to React
-    archive.on('progress', (progress) => {
-      if (totalBytes > 0) {
-        const percent = Math.round((progress.fs.processedBytes / totalBytes) * 100)
-        // Cap at 99% until Google Drive confirms the final byte
-        onProgress(Math.min(percent, 99))
-      }
-    })
-
-    // 4. Append the selected files exactly as structured
-    filesToZip.forEach((file) => {
-      // The `name` property dictates the exact folder structure inside the ZIP
-      archive.file(file.absolutePath, { name: file.relativePath || file.name })
-    })
-
-    // Finalize the archive (tells the stream no more files are coming)
-    archive.finalize()
-
-    // 5. Pipe the stream directly to Google Drive
-    const media = {
-      mimeType: 'application/zip',
-      body: archive // archiver is a valid Node Readable stream!
-    }
-
-    const driveFileName = `${gameTitle.replace(/[^a-z0-9]/gi, '_')}_save.zip`
-
-    const uploadTask = async () => {
-      try {
-        if (existingCloudSaveId) {
-          // Overwrite existing save
-          await drive.files.update({
-            fileId: existingCloudSaveId,
-            media: media
-          })
-          onProgress(100)
-          resolve(existingCloudSaveId)
-        } else {
-          // Create new save
-          const response = await drive.files.create({
-            requestBody: {
-              name: driveFileName,
-              parents: ['appDataFolder']
-            },
-            media: media,
-            fields: 'id'
-          })
-          onProgress(100)
-          resolve(response.data.id!)
+      // 2. Generate the stream and track progress
+      const archiveStream = zip.generateNodeStream(
+        {
+          type: 'nodebuffer',
+          streamFiles: true, // Crucial for low-memory streaming
+          compression: 'DEFLATE',
+          compressionOptions: { level: 9 }
+        },
+        (metadata) => {
+          // JSZip natively gives us a clean 0-100 percentage!
+          onProgress(Math.min(Math.round(metadata.percent), 99))
         }
-      } catch (uploadError) {
-        reject(uploadError)
-      }
-    }
+      )
 
-    uploadTask()
+      archiveStream.on('error', (err) => reject(err))
+
+      // 3. Prepare the Drive upload payload
+      const media = {
+        mimeType: 'application/zip',
+        body: archiveStream
+      }
+
+      const driveFileName = `${gameTitle.replace(/[^a-z0-9]/gi, '_')}_save.zip`
+
+      // 4. Push to Google Drive
+      if (existingCloudSaveId) {
+        await drive.files.update({
+          fileId: existingCloudSaveId,
+          media: media
+        })
+        onProgress(100)
+        resolve(existingCloudSaveId)
+      } else {
+        const response = await drive.files.create({
+          requestBody: {
+            name: driveFileName,
+            parents: ['appDataFolder']
+          },
+          media: media,
+          fields: 'id'
+        })
+        onProgress(100)
+        resolve(response.data.id!)
+      }
+    } catch (error) {
+      reject(error)
+    }
   })
+}
+
+export async function getCloudStorageStats(): Promise<CloudSaveStat[]> {
+  try {
+    const response = await drive.files.list({
+      spaces: 'appDataFolder',
+      // Ask Google to only send back the specific fields we care about to save bandwidth
+      fields: 'files(id, name, size, modifiedTime)'
+    })
+
+    const files = response.data.files || []
+
+    // Filter out library.json and map the rest to our strict TypeScript interface
+    return (
+      files
+        .filter((f) => f.name !== 'library.json')
+        .map((f) => ({
+          id: f.id!,
+          name: f.name!,
+          sizeBytes: parseInt(f.size || '0', 10),
+          modifiedTime: f.modifiedTime!
+        }))
+        // Sort by newest first
+        .sort((a, b) => new Date(b.modifiedTime).getTime() - new Date(a.modifiedTime).getTime())
+    )
+  } catch (error) {
+    console.error('Failed to fetch cloud storage stats:', error)
+    throw new Error('Could not read Google Drive storage')
+  }
+}
+
+export async function deleteCloudSave(fileId: string): Promise<boolean> {
+  try {
+    await drive.files.delete({ fileId })
+    return true
+  } catch (error) {
+    console.error(`Failed to delete file ${fileId} from Drive:`, error)
+    throw new Error('Could not delete file from Google Drive')
+  }
 }
 
 export function mergeLibraries(local: LibraryData, cloud: LibraryData): LibraryData {
@@ -212,4 +243,51 @@ export async function testListHiddenFiles() {
   } catch (error) {
     console.error('Failed to list hidden files:', error)
   }
+}
+
+export async function downloadSaveFromDrive(
+  cloudSaveId: string,
+  destinationPath: string,
+  onProgress: (percent: number) => void
+): Promise<void> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      // 1. Get the exact file size for the progress bar
+      const meta = await drive.files.get({
+        fileId: cloudSaveId,
+        fields: 'size'
+      })
+      const totalBytes = parseInt(meta.data.size || '0', 10)
+
+      // 2. Request the actual file data as a binary stream
+      const response = await drive.files.get(
+        { fileId: cloudSaveId, alt: 'media' },
+        { responseType: 'stream' } // Critical: prevents loading the whole file into RAM
+      )
+
+      // 3. Open a pipeline to the user's chosen folder
+      const destStream = createWriteStream(destinationPath)
+
+      let downloadedBytes = 0
+
+      // 4. Listen to the data chunks as they arrive to calculate progress
+      response.data.on('data', (chunk: Buffer) => {
+        downloadedBytes += chunk.length
+        if (totalBytes > 0) {
+          const percent = Math.round((downloadedBytes / totalBytes) * 100)
+          onProgress(Math.min(percent, 100))
+        }
+      })
+
+      // 5. Pipe the cloud stream into the local hard drive stream
+      response.data.pipe(destStream)
+
+      // 6. Finish up
+      destStream.on('finish', () => resolve())
+      destStream.on('error', (err) => reject(err))
+    } catch (error) {
+      console.error('Drive download stream failed:', error)
+      reject(error)
+    }
+  })
 }
