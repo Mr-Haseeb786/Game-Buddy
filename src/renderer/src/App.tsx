@@ -11,7 +11,19 @@ import { SyncStatus } from '../../shared/types'
 import BackupModal from './components/BackUpModal'
 import CloudManagerModal from './components/CloudManagerModal'
 
+// UI
+import { useUI } from './context/UIContext'
+
+// Views
+import LibraryView from './views/LibraryView'
+import SearchView from './views/SearchView'
+import ProfileView from './views/ProfileView'
+import SettingsView from './views/SettingsView'
+import MainLayout from './components/layout/MainLayout'
+
 export default function App() {
+  const { currentPage } = useUI()
+
   const [files, setFiles] = useState<FileNode[]>([])
   const [error, setError] = useState<string | null>(null)
 
@@ -67,6 +79,27 @@ export default function App() {
 
     checkAuthAndHydrate()
   }, [])
+
+  // The Switcher Function
+  const renderActiveView = () => {
+    switch (currentPage) {
+      case 'library':
+        return <LibraryView />
+      case 'search':
+        return (
+          <SearchView
+            libraryData={library?.games || {}}
+            onAddGame={handleAddGameFromSearch as any}
+          />
+        )
+      case 'profile':
+        return <ProfileView />
+      case 'settings':
+        return <SettingsView />
+      default:
+        return <LibraryView />
+    }
+  }
 
   const handleTestBackup = () => {
     // 1. Check if the library is loaded
@@ -389,202 +422,208 @@ export default function App() {
   const existingIds = Object.values(library.games).map((g) => g.rawgId)
 
   return (
-    <div className="p-8 min-h-screen bg-gray-900 text-gray-100 font-sans">
-      {managingGame && (
-        <ManageGameModal
-          game={managingGame}
-          onClose={() => setManagingGame(null)}
-          onUpdate={handleUpdateGame}
-          onRemove={handleRemoveGame}
-        />
-      )}
+    <MainLayout>
+      {renderActiveView()}
+      <div className="p-8 min-h-screen bg-gray-900 text-gray-100 font-sans">
+        {managingGame && (
+          <ManageGameModal
+            game={managingGame}
+            onClose={() => setManagingGame(null)}
+            onUpdate={handleUpdateGame}
+            onRemove={handleRemoveGame}
+          />
+        )}
 
-      {showCloudManager && (
-        <CloudManagerModal
-          onClose={() => setShowCloudManager(false)}
-          onFileDeleted={handleCloudSaveDeleted}
-        />
-      )}
+        {showCloudManager && (
+          <CloudManagerModal
+            onClose={() => setShowCloudManager(false)}
+            onFileDeleted={handleCloudSaveDeleted}
+          />
+        )}
 
-      {/* NEW: Render the Backup Modal */}
-      {backingUpGame && (
-        <BackupModal
-          game={backingUpGame}
-          onClose={() => setBackingUpGame(null)}
-          onSync={async (checkedFiles) => {
-            try {
-              console.log(`Starting zip and upload for ${checkedFiles.length} files...`)
+        {/* NEW: Render the Backup Modal */}
+        {backingUpGame && (
+          <BackupModal
+            game={backingUpGame}
+            onClose={() => setBackingUpGame(null)}
+            onSync={async (checkedFiles) => {
+              try {
+                console.log(`Starting zip and upload for ${checkedFiles.length} files...`)
 
-              // 1. Start listening to the live progress stream from Node.js
-              const cleanupListener = window.api.onSaveProgress(backingUpGame.rawgId, (percent) => {
-                console.log(`Upload Progress: ${percent}%`)
-                // (Later, we can tie this to a real progress bar UI!)
-              })
+                // 1. Start listening to the live progress stream from Node.js
+                const cleanupListener = window.api.onSaveProgress(
+                  backingUpGame.rawgId,
+                  (percent) => {
+                    console.log(`Upload Progress: ${percent}%`)
+                    // (Later, we can tie this to a real progress bar UI!)
+                  }
+                )
 
-              // 2. Trigger the actual Zipping & Uploading Engine
-              const success = await window.api.syncGameSave(backingUpGame.rawgId, checkedFiles)
+                // 2. Trigger the actual Zipping & Uploading Engine
+                const success = await window.api.syncGameSave(backingUpGame.rawgId, checkedFiles)
 
-              // 3. Clean up and close
-              cleanupListener()
-              if (success) {
-                const freshLibrary = await window.api.loadLibrary()
-                setLibrary(freshLibrary)
-                alert('Backup successfully zipped and uploaded to Google Drive!')
+                // 3. Clean up and close
+                cleanupListener()
+                if (success) {
+                  const freshLibrary = await window.api.loadLibrary()
+                  setLibrary(freshLibrary)
+                  alert('Backup successfully zipped and uploaded to Google Drive!')
+                }
+                setBackingUpGame(null)
+              } catch (error) {
+                console.error('Backup failed:', error)
+                alert('Failed to upload backup. Check the console for details.')
               }
-              setBackingUpGame(null)
-            } catch (error) {
-              console.error('Backup failed:', error)
-              alert('Failed to upload backup. Check the console for details.')
-            }
-          }}
-        />
-      )}
+            }}
+          />
+        )}
 
-      <div className="max-w-6xl mx-auto">
-        {/* Cloud Sync Header Bar */}
-        <div className="flex justify-between items-center bg-gray-800 p-4 rounded-lg border border-gray-700 mb-8 shadow-md">
-          <div className="flex items-center gap-3">
-            {cloudUI.icon}
-            <div>
-              <h2 className="font-bold text-white">Google Drive Sync</h2>
-              <p className={`text-xs font-medium transition-colors ${cloudUI.color}`}>
-                {cloudUI.text}
-              </p>
+        <div className="max-w-6xl mx-auto">
+          {/* Cloud Sync Header Bar */}
+          <div className="flex justify-between items-center bg-gray-800 p-4 rounded-lg border border-gray-700 mb-8 shadow-md">
+            <div className="flex items-center gap-3">
+              {cloudUI.icon}
+              <div>
+                <h2 className="font-bold text-white">Google Drive Sync</h2>
+                <p className={`text-xs font-medium transition-colors ${cloudUI.color}`}>
+                  {cloudUI.text}
+                </p>
+              </div>
+              {isAuthenticated ? (
+                <Cloud className="text-green-400" size={24} />
+              ) : (
+                <CloudOff className="text-gray-500" size={24} />
+              )}
+              <div>
+                <h2 className="font-bold text-white">Google Drive Sync</h2>
+                <p className="text-xs text-gray-400">
+                  {isAuthenticating
+                    ? 'Checking connection...'
+                    : isAuthenticated
+                      ? 'Connected to AppData folder'
+                      : 'Not connected'}
+                </p>
+              </div>
             </div>
-            {isAuthenticated ? (
-              <Cloud className="text-green-400" size={24} />
-            ) : (
-              <CloudOff className="text-gray-500" size={24} />
-            )}
+
+            {/* TEMPORARY TEST BUTTONS */}
+            <button
+              onClick={handleTestBackup}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded font-medium shadow"
+            >
+              TEST BACKUP ENGINE
+            </button>
+
+            <button
+              onClick={handleTestRestore}
+              className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded font-medium shadow"
+            >
+              TEST RESTORE ENGINE
+            </button>
+
             <div>
-              <h2 className="font-bold text-white">Google Drive Sync</h2>
-              <p className="text-xs text-gray-400">
-                {isAuthenticating
-                  ? 'Checking connection...'
-                  : isAuthenticated
-                    ? 'Connected to AppData folder'
-                    : 'Not connected'}
-              </p>
-            </div>
-          </div>
-
-          {/* TEMPORARY TEST BUTTONS */}
-          <button
-            onClick={handleTestBackup}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded font-medium shadow"
-          >
-            TEST BACKUP ENGINE
-          </button>
-
-          <button
-            onClick={handleTestRestore}
-            className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded font-medium shadow"
-          >
-            TEST RESTORE ENGINE
-          </button>
-
-          <div>
-            {isAuthenticated ? (
-              <div className="flex gap-2">
-                {/* NEW: Render the Retry button only if there is an error */}
-                {syncState === 'error' && (
+              {isAuthenticated ? (
+                <div className="flex gap-2">
+                  {/* NEW: Render the Retry button only if there is an error */}
+                  {syncState === 'error' && (
+                    <button
+                      onClick={handleForceSync}
+                      className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded font-medium text-sm transition-colors shadow-lg flex items-center gap-2"
+                    >
+                      Retry Sync
+                    </button>
+                  )}
+                  {/* NEW: Pull & Heal from Cloud */}
                   <button
-                    onClick={handleForceSync}
-                    className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded font-medium text-sm transition-colors shadow-lg flex items-center gap-2"
+                    onClick={handlePullFromCloud}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-medium text-sm transition-colors shadow-lg"
                   >
-                    Retry Sync
+                    Sync with Cloud Library
                   </button>
-                )}
-                {/* NEW: Pull & Heal from Cloud */}
+                  <button
+                    onClick={handleGoogleLogout}
+                    className="px-4 py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 rounded font-medium text-sm transition-colors border border-red-900/50"
+                  >
+                    Unlink Account
+                  </button>
+                  {/* NEW: Cloud Storage Manager Button */}
+                  <button
+                    onClick={() => setShowCloudManager(true)}
+                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded font-medium text-sm transition-colors border border-gray-600"
+                  >
+                    Manage Storage
+                  </button>
+                </div>
+              ) : isAuthenticating ? (
+                <div className="flex gap-2">
+                  <span className="px-4 py-2 bg-gray-700 text-gray-400 rounded font-medium text-sm border border-gray-600 flex items-center gap-2">
+                    <span className="animate-spin h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full"></span>
+                    Waiting...
+                  </span>
+                  <button
+                    onClick={handleCancelAuth}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded font-medium text-sm transition-colors shadow-lg"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
                 <button
-                  onClick={handlePullFromCloud}
+                  onClick={handleGoogleLogin}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-medium text-sm transition-colors shadow-lg"
                 >
-                  Sync with Cloud Library
+                  Link Google Account
                 </button>
-                <button
-                  onClick={handleGoogleLogout}
-                  className="px-4 py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 rounded font-medium text-sm transition-colors border border-red-900/50"
-                >
-                  Unlink Account
-                </button>
-                {/* NEW: Cloud Storage Manager Button */}
-                <button
-                  onClick={() => setShowCloudManager(true)}
-                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded font-medium text-sm transition-colors border border-gray-600"
-                >
-                  Manage Storage
-                </button>
-              </div>
-            ) : isAuthenticating ? (
-              <div className="flex gap-2">
-                <span className="px-4 py-2 bg-gray-700 text-gray-400 rounded font-medium text-sm border border-gray-600 flex items-center gap-2">
-                  <span className="animate-spin h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full"></span>
-                  Waiting...
-                </span>
-                <button
-                  onClick={handleCancelAuth}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded font-medium text-sm transition-colors shadow-lg"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={handleGoogleLogin}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-medium text-sm transition-colors shadow-lg"
+              )}
+            </div>
+          </div>
+
+          <h1 className="text-3xl font-bold mb-2">Find Games</h1>
+          {/* Mount the search component and pass down the props */}
+          <GameSearch onAddGame={handleAddGameFromSearch} existingLibraryIds={existingIds} />
+
+          <hr className="border-gray-700 my-8" />
+
+          <div className="flex justify-between items-end mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-white">My Library</h2>
+              <p className="text-gray-400 text-sm mt-1">
+                {Object.keys(library.games).length} games tracked
+              </p>
+            </div>
+          </div>
+
+          {/* The Library Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Object.values(library.games).map((game) => (
+              <div
+                key={game.rawgId}
+                className="bg-gray-800 p-4 rounded-lg border border-gray-700 flex justify-between items-center"
               >
-                Link Google Account
-              </button>
+                <div>
+                  <h3 className="text-lg font-bold text-white">{game.title}</h3>
+                  <div className="mt-2 flex gap-2">
+                    <span className="text-xs bg-blue-900 text-blue-200 px-2 py-1 rounded capitalize">
+                      {game.status}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  className="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded transition-colors"
+                  onClick={() => setManagingGame(game)}
+                >
+                  Manage
+                </button>
+              </div>
+            ))}
+            {Object.keys(library.games).length === 0 && (
+              <p className="text-gray-500 italic col-span-full">
+                Your library is empty. Search for a game above to get started.
+              </p>
             )}
           </div>
         </div>
-
-        <h1 className="text-3xl font-bold mb-2">Find Games</h1>
-        {/* Mount the search component and pass down the props */}
-        <GameSearch onAddGame={handleAddGameFromSearch} existingLibraryIds={existingIds} />
-
-        <hr className="border-gray-700 my-8" />
-
-        <div className="flex justify-between items-end mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-white">My Library</h2>
-            <p className="text-gray-400 text-sm mt-1">
-              {Object.keys(library.games).length} games tracked
-            </p>
-          </div>
-        </div>
-
-        {/* The Library Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Object.values(library.games).map((game) => (
-            <div
-              key={game.rawgId}
-              className="bg-gray-800 p-4 rounded-lg border border-gray-700 flex justify-between items-center"
-            >
-              <div>
-                <h3 className="text-lg font-bold text-white">{game.title}</h3>
-                <div className="mt-2 flex gap-2">
-                  <span className="text-xs bg-blue-900 text-blue-200 px-2 py-1 rounded capitalize">
-                    {game.status}
-                  </span>
-                </div>
-              </div>
-              <button
-                className="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded transition-colors"
-                onClick={() => setManagingGame(game)}
-              >
-                Manage
-              </button>
-            </div>
-          ))}
-          {Object.keys(library.games).length === 0 && (
-            <p className="text-gray-500 italic col-span-full">
-              Your library is empty. Search for a game above to get started.
-            </p>
-          )}
-        </div>
       </div>
-    </div>
+    </MainLayout>
   )
 }

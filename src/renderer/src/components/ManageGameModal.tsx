@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { GameEntry, GameStatus } from '../../../shared/types'
-import { X, FolderOpen, Trash2, Save, AlertTriangle } from 'lucide-react'
+import { X, FolderOpen, Trash2, AlertTriangle } from 'lucide-react'
 
 interface ManageGameModalProps {
   game: GameEntry

@@ -24,6 +24,20 @@ export interface ElectronAPI {
   onRestoreProgress: (gameId: number, callback: (percent: number) => void) => () => void
   getCloudStorageStats: () => Promise<CloudSaveStat[]>
   deleteCloudSave: (fileId: string) => Promise<boolean>
+  importWallpaper: () => Promise<string | null>
+  getDiscoverGames: (category: string, forceRefresh?: boolean) => Promise<ApiResponse<RawgGameList>>
+  searchGames: (query: string, forceRefresh?: boolean) => Promise<ApiResponse<RawgGameList>>
+}
+
+export interface ApiResponse<T> {
+  success: boolean
+  data?: T
+  error?: string
+}
+
+export interface RawgGameList {
+  results: any[]
+  next: string | null
 }
 
 export type GameStatus = 'playing' | 'planning' | 'paused' | 'completed' | 'dropped'

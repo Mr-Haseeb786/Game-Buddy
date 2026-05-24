@@ -40,6 +40,12 @@ const api: ElectronAPI = {
     ipcRenderer.on(channel, listener)
     return () => ipcRenderer.removeListener(channel, listener)
   },
+
+  getDiscoverGames: (category, forceRefresh) =>
+    ipcRenderer.invoke('get-discover-games', category, forceRefresh),
+  searchGames: (query, forceRefresh) => ipcRenderer.invoke('search-games', query, forceRefresh),
+
+  importWallpaper: () => ipcRenderer.invoke('import-wallpaper'),
   getCloudStorageStats: () => ipcRenderer.invoke('get-cloud-stats'),
   deleteCloudSave: (fileId) => ipcRenderer.invoke('delete-cloud-save', fileId)
 }

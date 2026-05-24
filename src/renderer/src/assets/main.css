@@ -1,4 +1,16 @@
 @import 'tailwindcss';
+@tailwind utilities;
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: var(--app-bg-primary);
+  color: var(--app-text-main);
+}
 
 /* --- CUSTOM SCROLLBAR FOR ELECTRON (CHROMIUM) --- */
 
@@ -29,4 +41,58 @@
 /* 5. Hide the top/bottom arrows */
 .custom-scrollbar::-webkit-scrollbar-button {
   display: none;
+}
+
+@layer base {
+  /* DEFAULT DARK THEME (Discord/Gamer Vibe) */
+  :root {
+    --app-bg-primary: #0f1115;
+    --app-bg-secondary: #1a1f2e;
+    --app-bg-modifier: #2a3143;
+
+    --app-text-main: #f3f4f6;
+    --app-text-muted: #9ca3af;
+
+    --app-accent: #3b82f6;
+    --app-accent-hover: #2563eb;
+    --app-danger: #ef4444;
+  }
+
+  /* CYBERPUNK THEME OVERRIDE */
+  .theme-cyberpunk {
+    --app-bg-primary: #09090b;
+    --app-bg-secondary: #121214;
+    --app-bg-modifier: #27272a;
+
+    --app-text-main: #fef08a;
+    --app-text-muted: #a1a1aa;
+
+    --app-accent: #facc15;
+    --app-accent-hover: #eab308;
+    --app-danger: #f43f5e;
+  }
+}
+
+/* 2. Tell Tailwind v4 to generate utility classes from our variables */
+@theme {
+  --color-primary: var(--app-bg-primary);
+  --color-secondary: var(--app-bg-secondary);
+  --color-modifier: var(--app-bg-modifier);
+
+  --color-text-main: var(--app-text-main);
+  --color-text-muted: var(--app-text-muted);
+
+  --color-accent: var(--app-accent);
+  --color-accent-hover: var(--app-accent-hover);
+  --color-danger: var(--app-danger);
+}
+
+/* Enable native window dragging in Electron */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+/* Prevent buttons inside the top bar from dragging the window, so they stay clickable */
+.no-drag {
+  -webkit-app-region: no-drag;
 }

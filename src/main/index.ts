@@ -1,5 +1,6 @@
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
+import fsPath from 'path'
 import fs from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 
@@ -16,6 +17,7 @@ import {
   deleteCloudSave
 } from './drive'
 import { scanSaveDirectory } from './scanner'
+import { getDiscoverGames, searchGames } from './api'
 
 // Get the secure path where the OS allows our app to save data
 const userDataPath = app.getPath('userData')
@@ -114,6 +116,34 @@ function setupIpcHandlers() {
       console.error('Manual force sync failed:', error)
       event.sender.send('sync-status-update', 'error')
       return false
+    }
+  })
+
+  ipcMain.handle('import-wallpaper', async () => {
+    try {
+      const { canceled, filePaths } = await dialog.showOpenDialog({
+        title: 'Select Custom Wallpaper',
+        properties: ['openFile'],
+        filters: [{ name: 'Media', extensions: ['jpg', 'png', 'mp4', 'webm'] }]
+      })
+
+      if (canceled || filePaths.length === 0) return null
+
+      const sourcePath = filePaths[0]
+      const fileName = fsPath.basename(sourcePath)
+
+      // Ensure a "wallpapers" directory exists inside the app's secure userData folder
+      const wallpaperDir = fsPath.join(app.getPath('userData'), 'wallpapers')
+      await fs.mkdir(wallpaperDir, { recursive: true })
+
+      const destPath = fsPath.join(wallpaperDir, fileName)
+      await fs.copyFile(sourcePath, destPath)
+
+      // Return the safe local file protocol path so React can render it
+      return `file://${destPath}`
+    } catch (error) {
+      console.error('Failed to import wallpaper:', error)
+      return null
     }
   })
 
@@ -281,6 +311,14 @@ function setupIpcHandlers() {
 
   ipcMain.handle('delete-cloud-save', async (_, fileId: string): Promise<boolean> => {
     return await deleteCloudSave(fileId)
+  })
+
+  ipcMain.handle('get-discover-games', async (_, category: string, forceRefresh?: boolean) => {
+    return await getDiscoverGames(category, forceRefresh)
+  })
+
+  ipcMain.handle('search-games', async (_, query: string, forceRefresh?: boolean) => {
+    return await searchGames(query, forceRefresh)
   })
 
   ipcMain.handle('check-google-auth', async () => await checkExistingAuth())
