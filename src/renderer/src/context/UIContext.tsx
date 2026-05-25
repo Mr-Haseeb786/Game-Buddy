@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
 // Define our valid page routes
-export type PageRoute = 'library' | 'search' | 'profile' | 'settings'
+export type PageRoute = 'library' | 'search' | 'profile' | 'settings' | 'game'
 
 interface UIContextType {
   theme: string

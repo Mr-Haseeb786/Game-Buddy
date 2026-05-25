@@ -37,9 +37,10 @@ interface Game {
 interface SearchViewProps {
   libraryData?: Record<number, any>
   onAddGame?: (game: Game, status: string) => void
+  onGameClick?: (id: number) => void
 }
 
-export default function SearchView({ libraryData = {}, onAddGame }: SearchViewProps) {
+export default function SearchView({ libraryData = {}, onAddGame, onGameClick }: SearchViewProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<Game[]>([])
@@ -125,19 +126,29 @@ export default function SearchView({ libraryData = {}, onAddGame }: SearchViewPr
                       game={game}
                       libraryEntry={libraryData[game.id]}
                       onAddGame={onAddGame}
+                      onGameClick={onGameClick}
                     />
                   ))}
             </div>
           </div>
         ) : (
           <>
-            <HeroCarousel games={trending} isLoading={isLoadingHome} searchQuery={searchQuery} />
+            {/* Added libraryData and onAddGame so the Carousel can use them */}
+            <HeroCarousel
+              games={trending}
+              isLoading={isLoadingHome}
+              searchQuery={searchQuery}
+              libraryData={libraryData}
+              onAddGame={onAddGame}
+              onGameClick={onGameClick}
+            />
             <GameRow
               title="Trending Now"
               games={trending}
               isLoading={isLoadingHome}
               libraryData={libraryData}
               onAddGame={onAddGame}
+              onGameClick={onGameClick}
             />
             <GameRow
               title="Top Indie Gems"
@@ -145,6 +156,7 @@ export default function SearchView({ libraryData = {}, onAddGame }: SearchViewPr
               isLoading={isLoadingHome}
               libraryData={libraryData}
               onAddGame={onAddGame}
+              onGameClick={onGameClick}
             />
           </>
         )}
@@ -153,7 +165,7 @@ export default function SearchView({ libraryData = {}, onAddGame }: SearchViewPr
   )
 }
 
-function GameRow({ title, games, isLoading, libraryData, onAddGame }: any) {
+function GameRow({ title, games, isLoading, libraryData, onAddGame, onGameClick }: any) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const isDown = useRef(false)
   const startX = useRef(0)
@@ -197,8 +209,6 @@ function GameRow({ title, games, isLoading, libraryData, onAddGame }: any) {
         onMouseLeave={handleMouseLeaveOrUp}
         onMouseUp={handleMouseLeaveOrUp}
         onMouseMove={handleMouseMove}
-        // THE FIX 1: Added `pt-4 -mt-4` to create an invisible 16px bleed zone above the cards.
-        // Also added `px-2 -mx-2` to protect side-shadows from getting clipped!
         className="flex overflow-x-auto gap-6 pb-8 pt-4 -mt-4 px-2 -mx-2 custom-scrollbar cursor-grab select-none"
       >
         {isLoading
@@ -209,7 +219,12 @@ function GameRow({ title, games, isLoading, libraryData, onAddGame }: any) {
             ))
           : games.map((game: any) => (
               <div key={game.id} className="min-w-[280px] snap-start">
-                <GameCard game={game} libraryEntry={libraryData[game.id]} onAddGame={onAddGame} />
+                <GameCard
+                  game={game}
+                  libraryEntry={libraryData[game.id]}
+                  onAddGame={onAddGame}
+                  onGameClick={onGameClick}
+                />
               </div>
             ))}
       </div>
@@ -217,8 +232,7 @@ function GameRow({ title, games, isLoading, libraryData, onAddGame }: any) {
   )
 }
 
-// --- THE UPGRADED GAME CARD ---
-function GameCard({ game, libraryEntry, onAddGame }: any) {
+function GameCard({ game, libraryEntry, onAddGame, onGameClick }: any) {
   const [optimisticStatus, setOptimisticStatus] = useState<string | null>(null)
   const [localLoadingStatus, setLocalLoadingStatus] = useState<string | null>(null)
 
@@ -241,21 +255,20 @@ function GameCard({ game, libraryEntry, onAddGame }: any) {
 
   return (
     <motion.div
+      onClick={() => onGameClick?.(game.id)}
       animate={{
         borderColor: visualColor,
         boxShadow: visualShadow
       }}
       transition={{ duration: 0.4, delay: isNewlyAdded ? 2.05 : 0 }}
-      className="group flex flex-col bg-primary rounded-2xl overflow-hidden border-2 transition-transform duration-300 hover:-translate-y-1 hover:z-50 relative z-0"
+      className="cursor-pointer group flex flex-col bg-primary rounded-2xl overflow-hidden border-2 transition-transform duration-300 hover:-translate-y-1 hover:z-50 relative z-0"
     >
-      {/* --- THE AAA DUAL-CIRCUIT TRACERS --- */}
       <AnimatePresence>
         {isNewlyAdded && (
           <svg
             className="absolute inset-0 w-full h-full pointer-events-none z-30 scale-x-[-1]"
             style={{ overflow: 'visible' }}
           >
-            {/* THE FIX 2: Tucked coordinates from x="1" to x="1.5" so the 3px stroke fits flawlessly inside the bounding box */}
             <motion.rect
               x="1.5"
               y="1.5"
@@ -294,13 +307,13 @@ function GameCard({ game, libraryEntry, onAddGame }: any) {
       </AnimatePresence>
 
       <div className="relative h-40 overflow-hidden">
-        <img
+        <motion.img
+          layoutId={`game-image-${game.id}-grid`} // <-- ADD '-grid' HERE
           src={game.background_image}
           alt={game.name}
           className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500 ease-out"
         />
 
-        {/* Top Right Container */}
         <div className="absolute top-2 right-2 flex items-center gap-2 z-30">
           <div className="px-2 py-1 bg-black/60 backdrop-blur-md rounded-md text-xs font-bold text-white flex items-center gap-1 shadow-lg">
             <Star size={12} className="text-accent" /> {game.rating}
@@ -313,7 +326,7 @@ function GameCard({ game, libraryEntry, onAddGame }: any) {
               style={{ color: actualStatusConfig.color }}
             >
               <motion.div
-                layoutId={`status-icon-${game.id}-${activeStatus}`}
+                layoutId={`status-icon-${game.id}-${activeStatus}-grid`} // Suffix added to isolate grid flight
                 transition={{ type: 'tween', duration: 0.85, ease: 'easeInOut' }}
               >
                 <actualStatusConfig.icon size={14} />
@@ -344,7 +357,6 @@ function GameCard({ game, libraryEntry, onAddGame }: any) {
           )}
         </AnimatePresence>
 
-        {/* Bottom Center Pill */}
         {showPill && (
           <div className="absolute bottom-2 left-0 right-0 flex justify-center z-40 pointer-events-none">
             <InteractiveLibraryPill
@@ -353,6 +365,7 @@ function GameCard({ game, libraryEntry, onAddGame }: any) {
               localLoadingStatus={localLoadingStatus}
               setLocalLoadingStatus={setLocalLoadingStatus}
               setOptimisticStatus={setOptimisticStatus}
+              layoutIdSuffix="-grid" // Suffix passed down
             />
           </div>
         )}
@@ -368,13 +381,14 @@ function GameCard({ game, libraryEntry, onAddGame }: any) {
   )
 }
 
-// --- THE INTERACTIVE ANIMATION PILL ---
-function InteractiveLibraryPill({
+// --- EXPORTED FOR CAROUSEL ---
+export function InteractiveLibraryPill({
   game,
   onAddGame,
   localLoadingStatus,
   setLocalLoadingStatus,
-  setOptimisticStatus
+  setOptimisticStatus,
+  layoutIdSuffix = ''
 }: any) {
   const [isHovered, setIsHovered] = useState(false)
   const [isPreFlight, setIsPreFlight] = useState(false)
@@ -416,7 +430,7 @@ function InteractiveLibraryPill({
         className={`p-1.5 rounded-full transition-colors cursor-pointer ${localLoadingStatus ? 'cursor-default' : 'hover:bg-white/10'} text-white`}
       >
         <motion.div
-          layoutId={`status-icon-${game.id}-${statusKey}`}
+          layoutId={`status-icon-${game.id}-${statusKey}${layoutIdSuffix}`} // Suffix dynamically appended
           style={{ color: opt.color, zIndex: isThisLoading && isPreFlight ? 100 : 1 }}
           animate={{
             scale: isThisLoading && isPreFlight ? 2.5 : 1,
@@ -471,7 +485,7 @@ function InteractiveLibraryPill({
         className="p-1.5 bg-accent text-white rounded-full cursor-pointer shadow-[0_0_10px_rgba(var(--app-accent),0.5)] z-10 mx-1"
       >
         <motion.div
-          layoutId={`status-icon-${game.id}-planned`}
+          layoutId={`status-icon-${game.id}-planned${layoutIdSuffix}`}
           style={{ zIndex: localLoadingStatus === 'planned' && isPreFlight ? 100 : 1 }}
           animate={{
             scale: localLoadingStatus === 'planned' && isPreFlight ? 2.5 : 1,

@@ -20,9 +20,11 @@ import SearchView from './views/SearchView'
 import ProfileView from './views/ProfileView'
 import SettingsView from './views/SettingsView'
 import MainLayout from './components/layout/MainLayout'
+import GamePage from './views/GamePage'
 
 export default function App() {
-  const { currentPage } = useUI()
+  const { currentPage, setCurrentPage } = useUI()
+  const [selectedGameId, setSelectedGameId] = useState<number | null>(null)
 
   const [files, setFiles] = useState<FileNode[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -90,12 +92,26 @@ export default function App() {
           <SearchView
             libraryData={library?.games || {}}
             onAddGame={handleAddGameFromSearch as any}
+            onGameClick={(id) => {
+              setSelectedGameId(id)
+              setCurrentPage('game')
+            }}
           />
         )
       case 'profile':
         return <ProfileView />
       case 'settings':
         return <SettingsView />
+      case 'game':
+        return (
+          <GamePage
+            // The onBack prop tells it to go back to search!
+            onBack={() => {
+              setSelectedGameId(null)
+              setCurrentPage('search')
+            }}
+          />
+        )
       default:
         return <LibraryView />
     }

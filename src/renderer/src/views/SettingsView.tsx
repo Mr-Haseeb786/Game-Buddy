@@ -1,5 +1,7 @@
+import GamePage from './GamePage'
+
 const SettingsView = () => {
-  return <div>SettingsView</div>
+  return <>Settings</>
 }
 
 export default SettingsView
