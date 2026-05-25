@@ -94,38 +94,64 @@ export default function GamePage({
 
   return (
     <div className="relative min-h-screen bg-primary selection:bg-accent/30 rounded-[2.5rem]">
-      {/* --- 1. THE AURORA AMBIANCE ENGINE --- */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <GameStatusBorder status={libraryEntry?.status} />
-        {/* <div className="sticky top-0 w-full h-screen overflow-hidden">
-          {[...Array(7)].map((_, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0 }}
-              animate={{
-                opacity: [0.15, 0.4, 0.15],
-                scale: [1, 1.5, 1],
-                x: [0, Math.random() * 200 - 100],
-                y: [0, Math.random() * 200 - 100]
-              }}
-              transition={{
-                duration: 5 + Math.random() * 5, // Random high-speed movement
-                repeat: Infinity,
-                ease: 'easeInOut',
-                delay: i * 0.5
-              }}
-              className="absolute w-[40vw] h-[40vw] rounded-full mix-blend-screen"
-              style={{
-                top: `${Math.random() * 80}%`,
-                left: `${Math.random() * 80}%`,
-                background: `radial-gradient(circle, ${i % 2 === 0 ? themeColor : '#3b82f6'} 0%, transparent 70%)`
-              }}
-            />
-          ))}
-        </div> */}
+      <GameStatusBorder status={libraryEntry?.status} />
+      {/* --- 1. WANDERING AURORA ENGINE --- */}
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+        <div className="absolute inset-0 mix-blend-screen opacity-40">
+          {/* Node 1: Sweeps from top to mid-bottom */}
+          <motion.div
+            animate={{
+              x: ['-15vw', '55vw', '30vw', '-10vw', '-15vw'],
+              // Expanded Y: Sweeps down to 120vh (past the fold)
+              y: ['-10vh', '120vh', '40vh', '80vh', '-10vh'],
+              scale: [1, 1.4, 0.9, 1.2, 1],
+              filter: ['hue-rotate(0deg)', 'hue-rotate(180deg)', 'hue-rotate(360deg)']
+            }}
+            transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
+            className="absolute top-0 left-0 w-[60vw] h-[60vw] rounded-full"
+            style={{
+              background: 'radial-gradient(circle, rgba(6,182,212,0.7) 0%, transparent 65%)',
+              willChange: 'transform, filter'
+            }}
+          />
+
+          {/* Node 2: Plunges deep behind System Requirements */}
+          <motion.div
+            animate={{
+              x: ['55vw', '5vw', '-20vw', '45vw', '55vw'],
+              // Expanded Y: Plunges deep to 150vh, then returns to top
+              y: ['40vh', '150vh', '-10vh', '60vh', '40vh'],
+              scale: [1.2, 0.8, 1.3, 0.9, 1.2],
+              filter: ['hue-rotate(0deg)', 'hue-rotate(-180deg)', 'hue-rotate(-360deg)']
+            }}
+            transition={{ duration: 28, repeat: Infinity, ease: 'linear' }}
+            className="absolute top-0 left-0 w-[65vw] h-[65vw] rounded-full"
+            style={{
+              background: 'radial-gradient(circle, rgba(139,92,246,0.7) 0%, transparent 65%)',
+              willChange: 'transform, filter'
+            }}
+          />
+
+          {/* Node 3: Guards the bottom of the page, rising occasionally */}
+          <motion.div
+            animate={{
+              x: ['25vw', '60vw', '0vw', '35vw', '25vw'],
+              // Expanded Y: Starts deep at 130vh, rises up, settles at bottom
+              y: ['130vh', '-10vh', '70vh', '140vh', '130vh'],
+              scale: [0.9, 1.5, 1, 1.4, 0.9],
+              filter: ['hue-rotate(0deg)', 'hue-rotate(90deg)', 'hue-rotate(360deg)']
+            }}
+            transition={{ duration: 22, repeat: Infinity, ease: 'linear' }}
+            className="absolute top-0 left-0 w-[55vw] h-[55vw] rounded-full"
+            style={{
+              background: 'radial-gradient(circle, rgba(244,63,94,0.7) 0%, transparent 65%)',
+              willChange: 'transform, filter'
+            }}
+          />
+        </div>
       </div>
       {/* --- 2. TOP NAVIGATION --- */}
-      <div className="fixed top-0 left-0 right-0 p-6 z-70 flex justify-between items-center bg-gradient-to-b from-primary/80 to-transparent">
+      <div className="fixed top-0 left-0 right-0 p-6 z-110 flex justify-between items-center bg-gradient-to-b from-primary/80 to-transparent ">
         <button
           onClick={onBack}
           className="p-3 bg-black/50 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-colors border border-white/10 shadow-lg cursor-pointer"

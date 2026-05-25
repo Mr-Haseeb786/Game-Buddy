@@ -6,7 +6,7 @@ export default function GameStatusBorder({ status }: { status?: string }) {
   const color = config?.color || '#3b82f6'
 
   return (
-    <div className="absolute inset-0 z-[100] pointer-events-none p-2 md:p-3">
+    <div className="absolute -inset-3 z-[100] pointer-events-none p-2 md:p-3">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{
