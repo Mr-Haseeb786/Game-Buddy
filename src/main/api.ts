@@ -113,3 +113,12 @@ export async function searchGames(query: string, forceRefresh: boolean = false) 
   const safeQuery = encodeURIComponent(query)
   return await fetchFromRAWG('games', `search=${safeQuery}&page_size=20`, forceRefresh)
 }
+
+export async function getGameDetails(id: number, forceRefresh: boolean = false) {
+  // RAWG's /games/{id} endpoint doesn't require query parameters other than the key
+  return await fetchFromRAWG(`games/${id}`, '', forceRefresh)
+}
+
+export async function getGameScreenshots(id: number, forceRefresh: boolean = false) {
+  return await fetchFromRAWG(`games/${id}/screenshots`, '', forceRefresh)
+}

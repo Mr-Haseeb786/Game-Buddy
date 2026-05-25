@@ -24,7 +24,8 @@ import GamePage from './views/GamePage'
 
 export default function App() {
   const { currentPage, setCurrentPage } = useUI()
-  const [selectedGameId, setSelectedGameId] = useState<number | null>(null)
+  const [selectedGame, setSelectedGame] = useState<any | null>(null)
+  const [clickSource, setClickSource] = useState<'grid' | 'hero'>('grid')
 
   const [files, setFiles] = useState<FileNode[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -92,8 +93,10 @@ export default function App() {
           <SearchView
             libraryData={library?.games || {}}
             onAddGame={handleAddGameFromSearch as any}
-            onGameClick={(id) => {
-              setSelectedGameId(id)
+            // PASS BOTH THE GAME AND THE SOURCE
+            onGameClick={(game, source) => {
+              setSelectedGame(game)
+              setClickSource(source)
               setCurrentPage('game')
             }}
           />
@@ -105,9 +108,13 @@ export default function App() {
       case 'game':
         return (
           <GamePage
-            // The onBack prop tells it to go back to search!
+            // PASS THEM TO THE GAME PAGE
+            initialGame={selectedGame}
+            source={clickSource}
+            libraryEntry={library?.games[selectedGame?.id]}
+            onAddGame={handleAddGameFromSearch as any}
             onBack={() => {
-              setSelectedGameId(null)
+              setSelectedGame(null)
               setCurrentPage('search')
             }}
           />

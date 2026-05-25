@@ -17,7 +17,7 @@ import {
   deleteCloudSave
 } from './drive'
 import { scanSaveDirectory } from './scanner'
-import { getDiscoverGames, searchGames } from './api'
+import { getDiscoverGames, getGameDetails, getGameScreenshots, searchGames } from './api'
 
 // Get the secure path where the OS allows our app to save data
 const userDataPath = app.getPath('userData')
@@ -315,6 +315,14 @@ function setupIpcHandlers() {
 
   ipcMain.handle('get-discover-games', async (_, category: string, forceRefresh?: boolean) => {
     return await getDiscoverGames(category, forceRefresh)
+  })
+
+  ipcMain.handle('get-game-details', async (_event, id: number) => {
+    return await getGameDetails(id)
+  })
+
+  ipcMain.handle('get-game-screenshots', async (_event, id: number) => {
+    return await getGameScreenshots(id)
   })
 
   ipcMain.handle('search-games', async (_, query: string, forceRefresh?: boolean) => {

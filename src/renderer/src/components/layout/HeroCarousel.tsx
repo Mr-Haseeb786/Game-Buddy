@@ -18,7 +18,7 @@ interface HeroCarouselProps {
   searchQuery: string
   libraryData?: Record<number, any>
   onAddGame?: (game: Game, status: string) => void
-  onGameClick?: (id: number) => void
+  onGameClick?: (game: Game, source: 'grid' | 'hero') => void
 }
 
 // Vibrant colors matching game vibes
@@ -248,7 +248,7 @@ function HeroSlide({ game, direction, libraryEntry, onAddGame, handleDragEnd, on
         {/* --- THE MEDIA DECK --- */}
         <div className="flex items-center gap-4 pointer-events-auto h-12">
           <button
-            onClick={() => onGameClick?.(game.id)}
+            onClick={() => onGameClick?.(game, 'hero')}
             className="px-8 h-full bg-accent hover:bg-accentHover text-white rounded-xl font-bold shadow-[0_0_20px_rgba(var(--app-active-ambiance),0.5)] transition-all transform hover:-translate-y-0.5 active:scale-95"
           >
             View Details

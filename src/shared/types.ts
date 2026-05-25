@@ -27,6 +27,8 @@ export interface ElectronAPI {
   importWallpaper: () => Promise<string | null>
   getDiscoverGames: (category: string, forceRefresh?: boolean) => Promise<ApiResponse<RawgGameList>>
   searchGames: (query: string, forceRefresh?: boolean) => Promise<ApiResponse<RawgGameList>>
+  getGameDetails: (id: number) => Promise<any>
+  getGameScreenshots: (id: number) => Promise<any>
 }
 
 export interface ApiResponse<T> {

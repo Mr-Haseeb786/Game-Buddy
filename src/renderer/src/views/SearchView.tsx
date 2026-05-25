@@ -37,7 +37,7 @@ interface Game {
 interface SearchViewProps {
   libraryData?: Record<number, any>
   onAddGame?: (game: Game, status: string) => void
-  onGameClick?: (id: number) => void
+  onGameClick?: (game: Game, source: 'grid' | 'hero') => void
 }
 
 export default function SearchView({ libraryData = {}, onAddGame, onGameClick }: SearchViewProps) {
@@ -255,7 +255,7 @@ function GameCard({ game, libraryEntry, onAddGame, onGameClick }: any) {
 
   return (
     <motion.div
-      onClick={() => onGameClick?.(game.id)}
+      onClick={() => onGameClick?.(game, 'grid')}
       animate={{
         borderColor: visualColor,
         boxShadow: visualShadow

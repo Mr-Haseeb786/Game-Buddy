@@ -45,10 +45,15 @@ const api: ElectronAPI = {
     ipcRenderer.invoke('get-discover-games', category, forceRefresh),
   searchGames: (query, forceRefresh) => ipcRenderer.invoke('search-games', query, forceRefresh),
 
+  // --- NEW RAWG API ENDPOINTS ---
+  getGameDetails: (id: number) => ipcRenderer.invoke('get-game-details', id),
+  getGameScreenshots: (id: number) => ipcRenderer.invoke('get-game-screenshots', id),
+
   importWallpaper: () => ipcRenderer.invoke('import-wallpaper'),
   getCloudStorageStats: () => ipcRenderer.invoke('get-cloud-stats'),
   deleteCloudSave: (fileId) => ipcRenderer.invoke('delete-cloud-save', fileId)
 }
+
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise
 // just add to the DOM global.
