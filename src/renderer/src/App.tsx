@@ -90,7 +90,14 @@ export default function App() {
   const renderActiveView = () => {
     switch (currentPage) {
       case 'library':
-        return <LibraryView />
+        return (
+          <LibraryView
+            libraryData={library?.games || {}}
+            onUpdateGame={handleUpdateGame}
+            onBackupTrigger={(game: any) => setBackingUpGame(game)}
+            onRemoveGame={handleRemoveGame}
+          />
+        )
       case 'search':
         return (
           <SearchView
@@ -362,7 +369,8 @@ export default function App() {
         savePathDesktop: null,
         updatedAt: Date.now(),
         saveExtension: null,
-        cloudSaveId: recoveredCloudId // THE MAGIC HAPPENS HERE
+        cloudSaveId: recoveredCloudId,
+        background_image: rawgGame.background_image
       }
 
       const updatedLibrary: LibraryData = {

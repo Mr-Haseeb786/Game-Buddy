@@ -56,6 +56,7 @@ export interface GameEntry {
   updatedAt: number
   saveExtension: string | null
   cloudSaveId: string | null
+  background_image: string | null
 }
 
 export type SyncStatus = 'idle' | 'syncing' | 'success' | 'error'
