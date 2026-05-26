@@ -313,9 +313,12 @@ function setupIpcHandlers() {
     return await deleteCloudSave(fileId)
   })
 
-  ipcMain.handle('get-discover-games', async (_, category: string, forceRefresh?: boolean) => {
-    return await getDiscoverGames(category, forceRefresh)
-  })
+  ipcMain.handle(
+    'get-discover-games',
+    async (_, category: string, page: number, forceRefresh?: boolean) => {
+      return await getDiscoverGames(category, forceRefresh, page)
+    }
+  )
 
   ipcMain.handle('get-game-details', async (_event, id: number) => {
     return await getGameDetails(id)

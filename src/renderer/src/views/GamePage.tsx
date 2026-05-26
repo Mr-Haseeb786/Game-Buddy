@@ -629,7 +629,7 @@ function LiquidMorphButton({ game, libraryEntry, onAddGame }: any) {
                     whileHover={!localLoadingStatus ? { scale: 1.15 } : {}}
                     whileTap={!localLoadingStatus ? { scale: 0.9 } : {}}
                     animate={{ opacity: isOtherLoading ? 0.3 : 1 }}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors flex-shrink-0 ${localLoadingStatus ? '' : 'hover:bg-white/20'}`}
+                    className={`w-10 h-10 rounded-full cursor-pointer flex items-center justify-center transition-colors flex-shrink-0 ${localLoadingStatus ? '' : 'hover:bg-white/20'}`}
                     style={{ color: config.color }}
                     title={config.label}
                   >

@@ -25,7 +25,11 @@ export interface ElectronAPI {
   getCloudStorageStats: () => Promise<CloudSaveStat[]>
   deleteCloudSave: (fileId: string) => Promise<boolean>
   importWallpaper: () => Promise<string | null>
-  getDiscoverGames: (category: string, forceRefresh?: boolean) => Promise<ApiResponse<RawgGameList>>
+  getDiscoverGames: (
+    category: string,
+    page: number,
+    forceRefresh?: boolean
+  ) => Promise<ApiResponse<RawgGameList>>
   searchGames: (query: string, forceRefresh?: boolean) => Promise<ApiResponse<RawgGameList>>
   getGameDetails: (id: number) => Promise<any>
   getGameScreenshots: (id: number) => Promise<any>

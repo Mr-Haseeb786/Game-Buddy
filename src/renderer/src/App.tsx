@@ -21,6 +21,7 @@ import ProfileView from './views/ProfileView'
 import SettingsView from './views/SettingsView'
 import MainLayout from './components/layout/MainLayout'
 import GamePage from './views/GamePage'
+import CategoryView from './views/CategoryView'
 
 export default function App() {
   const { currentPage, setCurrentPage } = useUI()
@@ -41,6 +42,8 @@ export default function App() {
 
   const [backingUpGame, setBackingUpGame] = useState<GameEntry | null>(null)
   const [showCloudManager, setShowCloudManager] = useState(false)
+
+  const [activeCategory, setActiveCategory] = useState<{ id: string; title: string } | null>(null)
 
   // Load the library when the app opens
   useEffect(() => {
@@ -98,6 +101,25 @@ export default function App() {
               setSelectedGame(game)
               setClickSource(source)
               setCurrentPage('game')
+            }}
+            onViewCategory={(id, title) => {
+              setActiveCategory({ id, title })
+              setCurrentPage('category')
+            }}
+          />
+        )
+      case 'category':
+        return (
+          <CategoryView
+            category={activeCategory}
+            onGameClick={(game, source) => {
+              setSelectedGame(game)
+              setClickSource(source)
+              setCurrentPage('game')
+            }}
+            onBack={() => {
+              setActiveCategory(null)
+              setCurrentPage('search') // Or 'library', depending on where your rows live
             }}
           />
         )

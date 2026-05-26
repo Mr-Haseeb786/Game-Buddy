@@ -16,6 +16,10 @@ import {
 } from 'lucide-react'
 import HeroCarousel from '../components/layout/HeroCarousel'
 
+import { FaWindows, FaPlaystation, FaXbox, FaApple, FaLinux, FaAndroid } from 'react-icons/fa'
+import { BsNintendoSwitch } from 'react-icons/bs'
+import { MdPhoneIphone } from 'react-icons/md'
+
 // --- THE STATUS COLOR ENGINE ---
 export const STATUS_CONFIG = {
   playing: { icon: Gamepad2, color: '#4ade80', label: 'Playing' },
@@ -38,9 +42,15 @@ interface SearchViewProps {
   libraryData?: Record<number, any>
   onAddGame?: (game: Game, status: string) => void
   onGameClick?: (game: Game, source: 'grid' | 'hero') => void
+  onViewCategory?: (id: string, title: string) => void
 }
 
-export default function SearchView({ libraryData = {}, onAddGame, onGameClick }: SearchViewProps) {
+export default function SearchView({
+  libraryData = {},
+  onAddGame,
+  onGameClick,
+  onViewCategory
+}: SearchViewProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<Game[]>([])
@@ -54,8 +64,8 @@ export default function SearchView({ libraryData = {}, onAddGame, onGameClick }:
       setIsLoadingHome(true)
       try {
         const [trendingRes, indieRes] = await Promise.all([
-          window.api.getDiscoverGames('trending'),
-          window.api.getDiscoverGames('indie')
+          window.api.getDiscoverGames('trending', 1),
+          window.api.getDiscoverGames('indie', 1)
         ])
         if (trendingRes.success) setTrending(trendingRes.data?.results || [])
         if (indieRes.success) setIndie(indieRes.data?.results || [])
@@ -89,7 +99,7 @@ export default function SearchView({ libraryData = {}, onAddGame, onGameClick }:
 
   return (
     <div className="flex flex-col animate-in fade-in duration-300">
-      <div className="sticky top-0 z-30 pb-4 pt-1 bg-transparent mx-auto w-[80%] translate-x-[10%]">
+      <div className="sticky top-0 z-100 pb-4 pt-1 bg-transparent mx-auto w-[80%] translate-x-[10%]">
         <div className="relative group max-w-2xl">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
             {isSearching ? (
@@ -144,19 +154,23 @@ export default function SearchView({ libraryData = {}, onAddGame, onGameClick }:
             />
             <GameRow
               title="Trending Now"
+              id="trending"
               games={trending}
               isLoading={isLoadingHome}
               libraryData={libraryData}
               onAddGame={onAddGame}
               onGameClick={onGameClick}
+              onViewCategory={onViewCategory}
             />
             <GameRow
               title="Top Indie Gems"
+              id="indie"
               games={indie}
               isLoading={isLoadingHome}
               libraryData={libraryData}
               onAddGame={onAddGame}
               onGameClick={onGameClick}
+              onViewCategory={onViewCategory}
             />
           </>
         )}
@@ -165,7 +179,16 @@ export default function SearchView({ libraryData = {}, onAddGame, onGameClick }:
   )
 }
 
-function GameRow({ title, games, isLoading, libraryData, onAddGame, onGameClick }: any) {
+function GameRow({
+  id,
+  title,
+  games,
+  isLoading,
+  libraryData,
+  onAddGame,
+  onGameClick,
+  onViewCategory
+}: any) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const isDown = useRef(false)
   const startX = useRef(0)
@@ -194,7 +217,12 @@ function GameRow({ title, games, isLoading, libraryData, onAddGame, onGameClick 
     <div>
       <div className="flex justify-between items-end mb-4">
         <h2 className="text-2xl font-bold text-textMain">{title}</h2>
-        <button className="text-sm font-medium text-textMuted hover:text-accent flex items-center gap-1 transition-colors group">
+        <button
+          className="text-sm font-medium text-textMuted hover:text-accent flex items-center gap-1 transition-colors group cursor-pointer"
+          onClick={() => {
+            onViewCategory?.(id, title)
+          }}
+        >
           View All{' '}
           <ChevronRight
             size={16}
@@ -232,7 +260,46 @@ function GameRow({ title, games, isLoading, libraryData, onAddGame, onGameClick 
   )
 }
 
-function GameCard({ game, libraryEntry, onAddGame, onGameClick }: any) {
+// --- PLATFORM MICRO-BADGE DICTIONARY ---
+// We use Tailwind colors that pop nicely against your dark 'primary' background
+const PLATFORM_MAP: Record<string, { icon: any; color: string }> = {
+  pc: {
+    icon: FaWindows,
+    color: 'group-hover:text-blue-400 group-hover:bg-blue-400/10 group-hover:border-blue-400/30'
+  },
+  playstation: {
+    icon: FaPlaystation,
+    color: 'group-hover:text-blue-500 group-hover:bg-blue-500/10 group-hover:border-blue-500/30'
+  },
+  xbox: {
+    icon: FaXbox,
+    color: 'group-hover:text-green-500 group-hover:bg-green-500/10 group-hover:border-green-500/30'
+  },
+  nintendo: {
+    icon: BsNintendoSwitch,
+    color: 'group-hover:text-red-500 group-hover:bg-red-500/10 group-hover:border-red-500/30'
+  },
+  mac: {
+    icon: FaApple,
+    color: 'group-hover:text-gray-200 group-hover:bg-gray-200/10 group-hover:border-gray-200/30'
+  },
+  linux: {
+    icon: FaLinux,
+    color:
+      'group-hover:text-yellow-400 group-hover:bg-yellow-400/10 group-hover:border-yellow-400/30'
+  },
+  android: {
+    icon: FaAndroid,
+    color:
+      'group-hover:text-emerald-500 group-hover:bg-emerald-500/10 group-hover:border-emerald-500/30'
+  },
+  ios: {
+    icon: MdPhoneIphone,
+    color: 'group-hover:text-gray-200 group-hover:bg-gray-200/10 group-hover:border-gray-200/30'
+  }
+}
+
+export function GameCard({ game, libraryEntry, onAddGame, onGameClick }: any) {
   const [optimisticStatus, setOptimisticStatus] = useState<string | null>(null)
   const [localLoadingStatus, setLocalLoadingStatus] = useState<string | null>(null)
 
@@ -376,6 +443,33 @@ function GameCard({ game, libraryEntry, onAddGame, onGameClick }: any) {
         <p className="text-xs text-textMuted line-clamp-1">
           {game.genres?.map((g: any) => g.name).join(', ') || 'Various Genres'}
         </p>
+        {/* --- PLATFORM ICONS --- */}
+        {/* FIX: mt-auto pushes it to the bottom, pt-3 guarantees a gap below the genres! */}
+        <div className="flex items-center gap-2 mt-auto pt-3 overflow-hidden">
+          {game.parent_platforms?.slice(0, 4).map(({ platform }: any) => {
+            const platformData = PLATFORM_MAP[platform.slug]
+            if (!platformData) return null
+
+            const Icon = platformData.icon
+
+            return (
+              <div
+                key={platform.slug}
+                title={platform.name}
+                className={`flex items-center justify-center w-6 h-6 rounded-md bg-white/5 border border-white/5 text-textMuted/50 transition-all duration-300 ${platformData.color}`}
+              >
+                <Icon size={12} />
+              </div>
+            )
+          })}
+
+          {/* Overflow Counter */}
+          {game.parent_platforms?.length > 4 && (
+            <span className="text-[10px] font-bold text-textMuted/40 px-1">
+              +{game.parent_platforms.length - 4}
+            </span>
+          )}
+        </div>
       </div>
     </motion.div>
   )

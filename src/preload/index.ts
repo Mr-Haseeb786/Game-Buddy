@@ -41,8 +41,8 @@ const api: ElectronAPI = {
     return () => ipcRenderer.removeListener(channel, listener)
   },
 
-  getDiscoverGames: (category, forceRefresh) =>
-    ipcRenderer.invoke('get-discover-games', category, forceRefresh),
+  getDiscoverGames: (category: string, page: number) =>
+    ipcRenderer.invoke('get-discover-games', category, page),
   searchGames: (query, forceRefresh) => ipcRenderer.invoke('search-games', query, forceRefresh),
 
   // --- NEW RAWG API ENDPOINTS ---

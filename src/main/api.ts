@@ -87,9 +87,13 @@ async function fetchFromRAWG(endpoint: string, queryParams: string, forceRefresh
 
 // --- SPECIFIC ENDPOINTS EXPOSED TO IPC ---
 
-export async function getDiscoverGames(category: string, forceRefresh: boolean = false) {
+export async function getDiscoverGames(
+  category: string,
+  forceRefresh: boolean = false,
+  page: number = 1
+) {
   // Map our UI categories to actual RAWG API parameters
-  let params = 'page_size=20'
+  let params = `page_size=20&page=${page}`
 
   switch (category) {
     case 'trending':
