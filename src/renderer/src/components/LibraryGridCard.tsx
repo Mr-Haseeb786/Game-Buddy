@@ -14,7 +14,8 @@ import {
   Settings,
   Trash2,
   CloudOff,
-  AlertTriangle
+  AlertTriangle,
+  CloudDownload
 } from 'lucide-react'
 
 const STATUS_CONFIG = {
@@ -33,6 +34,27 @@ export default function LibraryGridCard({ game, onUpdate, onBackup, onRemoveGame
   const [pendingDelete, setPendingDelete] = useState<{ isCloud: boolean } | null>(null)
 
   const [isFlashing, setIsFlashing] = useState(true)
+
+  const [isRestoring, setIsRestoring] = useState(false)
+
+  const handleRestore = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    // Safety check: Prevent clicking if already restoring or no cloud save exists
+    if (!game.cloudSaveId || isRestoring) return
+
+    setIsRestoring(true)
+    try {
+      // Calls your exact backend handler
+      const success = await window.api.restoreGameSave(game.rawgId, game.title, game.cloudSaveId)
+      if (success) {
+        console.log(`Successfully restored ${game.title}!`)
+      }
+    } catch (error) {
+      console.error('Failed to restore save:', error)
+    } finally {
+      setIsRestoring(false)
+    }
+  }
 
   const settingsRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -284,7 +306,26 @@ export default function LibraryGridCard({ game, onUpdate, onBackup, onRemoveGame
             </AnimatePresence>
           </div>
 
-          <div className="shrink-0">
+          <div className="shrink-0 flex items-center gap-2">
+            {/* NEW: Restore Button */}
+            <button
+              onClick={handleRestore}
+              disabled={!game.cloudSaveId || isRestoring}
+              title={!game.cloudSaveId ? 'No cloud save available' : 'Restore from Cloud'}
+              className={`flex items-center justify-center w-8 h-8 rounded-xl backdrop-blur-md border transition-all shadow-lg ${
+                !game.cloudSaveId || isRestoring
+                  ? 'bg-black/20 border-white/5 text-white/20 cursor-not-allowed'
+                  : 'bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/40 hover:text-blue-300 cursor-pointer hover:scale-105 active:scale-95'
+              }`}
+            >
+              {isRestoring ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <CloudDownload size={15} />
+              )}
+            </button>
+
+            {/* EXISTING: Backup Button */}
             <button
               onClick={(e) => {
                 e.stopPropagation()
