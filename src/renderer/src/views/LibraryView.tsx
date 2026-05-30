@@ -12,6 +12,7 @@ import {
 import { useDebounce } from '@renderer/utils'
 // import { STATUS_CONFIG } from './SearchView'
 import LibraryGridCard from '../components/LibraryGridCard'
+import LibraryListRow from '@renderer/components/layout/LibraryListRow'
 // import LibraryTableRow from '../components/LibraryTableRow'
 
 export default function LibraryView({
@@ -104,7 +105,7 @@ export default function LibraryView({
             {/* Filter Toggle */}
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`p-2.5 rounded-xl border transition-colors flex items-center gap-2 ${showFilters || activeStatuses.length > 0 || specialFilters.needsBackup || specialFilters.needsPath ? 'bg-accent/20 border-accent/50 text-accent' : 'bg-white/5 border-white/10 text-textMuted hover:bg-white/10 hover:text-white'}`}
+              className={`p-2.5 cursor-pointer rounded-xl border transition-colors flex items-center gap-2 ${showFilters || activeStatuses.length > 0 || specialFilters.needsBackup || specialFilters.needsPath ? 'bg-accent/20 border-accent/50 text-accent' : 'bg-white/5 border-white/10 text-textMuted hover:bg-white/10 hover:text-white'}`}
             >
               <Filter size={18} />
             </button>
@@ -113,13 +114,13 @@ export default function LibraryView({
             <div className="flex items-center bg-white/5 border border-white/10 rounded-xl p-1">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white/10 text-white shadow-sm' : 'text-textMuted hover:text-white'}`}
+                className={`p-1.5 cursor-pointer rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white/10 text-white shadow-sm' : 'text-textMuted hover:text-white'}`}
               >
                 <LayoutGrid size={18} />
               </button>
               <button
                 onClick={() => setViewMode('table')}
-                className={`p-1.5 rounded-lg transition-all ${viewMode === 'table' ? 'bg-white/10 text-white shadow-sm' : 'text-textMuted hover:text-white'}`}
+                className={`p-1.5 cursor-pointer rounded-lg transition-all ${viewMode === 'table' ? 'bg-white/10 text-white shadow-sm' : 'text-textMuted hover:text-white'}`}
               >
                 <ListIcon size={18} />
               </button>
@@ -144,7 +145,7 @@ export default function LibraryView({
                   </span>
                   <button
                     onClick={() => setSpecialFilters((s) => ({ ...s, needsPath: !s.needsPath }))}
-                    className={`flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-lg transition-all border ${specialFilters.needsPath ? 'bg-red-500/20 text-red-400 border-red-500/50' : 'bg-transparent text-textMuted border-transparent hover:bg-white/5'}`}
+                    className={`flex cursor-pointer items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-lg transition-all border ${specialFilters.needsPath ? 'bg-red-500/20 text-red-400 border-red-500/50' : 'bg-transparent text-textMuted border-transparent hover:bg-white/5'}`}
                   >
                     <FolderPlus size={16} /> Missing Save Path
                   </button>
@@ -152,7 +153,7 @@ export default function LibraryView({
                     onClick={() =>
                       setSpecialFilters((s) => ({ ...s, needsBackup: !s.needsBackup }))
                     }
-                    className={`flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-lg transition-all border ${specialFilters.needsBackup ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' : 'bg-transparent text-textMuted border-transparent hover:bg-white/5'}`}
+                    className={`flex cursor-pointer items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-lg transition-all border ${specialFilters.needsBackup ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' : 'bg-transparent text-textMuted border-transparent hover:bg-white/5'}`}
                   >
                     <CloudAlert size={16} /> Needs Backup
                   </button>
@@ -175,7 +176,7 @@ export default function LibraryView({
                               : [...prev, status]
                           )
                         }
-                        className={`capitalize text-sm font-medium px-3 py-1.5 rounded-lg transition-all border ${activeStatuses.includes(status) ? 'bg-white/20 text-white border-white/30' : 'bg-white/5 text-textMuted border-white/10 hover:bg-white/10'}`}
+                        className={`capitalize cursor-pointer text-sm font-medium px-3 py-1.5 rounded-lg transition-all border ${activeStatuses.includes(status) ? 'bg-white/20 text-white border-white/30' : 'bg-white/5 text-textMuted border-white/10 hover:bg-white/10'}`}
                       >
                         {status}
                       </button>
@@ -191,7 +192,7 @@ export default function LibraryView({
                   <select
                     value={sortMode}
                     onChange={(e) => setSortMode(e.target.value as any)}
-                    className="bg-black/50 border border-white/10 text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-accent"
+                    className="bg-black/50 border cursor-pointer border-white/10 text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-accent"
                   >
                     <option value="recent_added">Recently Added</option>
                     <option value="recent_played">Recently Played</option>
@@ -248,10 +249,12 @@ export default function LibraryView({
               >
                 {processedGames.map((game) => (
                   <motion.div layout key={game.rawgId}>
-                    {/* <LibraryTableRow game={game} onUpdate={onUpdateGame} onBackup={onBackupTrigger} /> */}
-                    <div className="h-16 bg-white/5 border border-white/10 rounded-xl flex items-center px-4">
-                      {game.title}
-                    </div>
+                    <LibraryListRow
+                      game={game}
+                      onUpdate={onUpdateGame}
+                      onBackup={onBackupTrigger}
+                      onRemoveGame={onRemoveGame}
+                    />
                   </motion.div>
                 ))}
               </motion.div>
