@@ -33,6 +33,20 @@ export interface ElectronAPI {
   searchGames: (query: string, forceRefresh?: boolean) => Promise<ApiResponse<RawgGameList>>
   getGameDetails: (id: number) => Promise<any>
   getGameScreenshots: (id: number) => Promise<any>
+  selectAvatar: () => Promise<string | null>
+  downloadAvatarUrl: (url: string) => Promise<string | null>
+  loadSettings: () => Promise<AppSettings>
+  saveSettings: (settings: AppSettings) => Promise<boolean>
+  saveCroppedAvatar: (base64Data: string) => Promise<string | null>
+}
+
+export interface UserProfile {
+  name: string
+  avatar: string
+}
+
+export interface AppSettings {
+  userProfile: UserProfile
 }
 
 export interface ApiResponse<T> {

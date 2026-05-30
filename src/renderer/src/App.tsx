@@ -1,6 +1,6 @@
 // src/renderer/src/App.tsx
 import { useState, useEffect } from 'react'
-import { FileNode } from '../../shared/types'
+import { AppSettings, FileNode } from '../../shared/types'
 import { LibraryData, GameEntry } from '../../shared/types'
 import { GameSearch } from './components/GameSearch'
 import { RawgGame } from 'src/shared/rawg'
@@ -45,9 +45,15 @@ export default function App() {
 
   const [activeCategory, setActiveCategory] = useState<{ id: string; title: string } | null>(null)
 
+  const [settings, setSettings] = useState<AppSettings | null>(null)
+
   // Load the library when the app opens
   useEffect(() => {
-    window.api.loadLibrary().then(setLibrary).catch(console.error)
+    Promise.all([
+      window.api.loadLibrary().then(setLibrary),
+      window.api.loadSettings().then(setSettings)
+    ]).catch(console.error)
+
     const checkAuth = async () => {
       const isLinked = await window.api.checkGoogleAuth()
       setIsAuthenticated(isLinked)
@@ -131,7 +137,20 @@ export default function App() {
           />
         )
       case 'profile':
-        return <ProfileView />
+        return (
+          <ProfileView
+            library={library}
+            settings={settings}
+            onUpdateProfile={handleUpdateSettings}
+            isAuthenticated={isAuthenticated}
+            isAuthenticating={isAuthenticating}
+            syncState={syncState}
+            onGoogleLogin={handleGoogleLogin}
+            onGoogleLogout={handleGoogleLogout}
+            onManageStorage={() => setShowCloudManager(true)}
+            onCancelAuth={handleCancelAuth}
+          />
+        )
       case 'settings':
         return <SettingsView />
       case 'game':
@@ -381,6 +400,19 @@ export default function App() {
       // Fire and forget save
       window.api.saveLibrary(updatedLibrary).catch(console.error)
       return updatedLibrary
+    })
+  }
+
+  const handleUpdateSettings = (profileData: { name?: string; avatar?: string }) => {
+    setSettings((prev) => {
+      const current = prev || { userProfile: { name: 'Player One', avatar: '' } }
+      const updatedSettings = {
+        ...current,
+        userProfile: { ...current.userProfile, ...profileData }
+      }
+      // Fire and forget to the hard drive
+      window.api.saveSettings(updatedSettings).catch(console.error)
+      return updatedSettings
     })
   }
 

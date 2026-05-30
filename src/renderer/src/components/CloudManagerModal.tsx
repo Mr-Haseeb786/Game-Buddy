@@ -4,6 +4,7 @@ import { CloudSaveStat } from '../../../shared/types'
 import { formatBytes } from '../utils'
 // NEW IMPORTS: Added Trash2 and AlertTriangle
 import { Cloud, X, Database, Clock, HardDrive, Trash2, AlertTriangle } from 'lucide-react'
+import { createPortal } from 'react-dom'
 
 interface CloudManagerModalProps {
   onClose: () => void
@@ -31,6 +32,12 @@ export default function CloudManagerModal({ onClose, onFileDeleted }: CloudManag
       }
     }
     fetchStats()
+
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = originalOverflow
+    }
   }, [])
 
   // NEW HANDLER: The delete execution
@@ -59,8 +66,8 @@ export default function CloudManagerModal({ onClose, onFileDeleted }: CloudManag
 
   const totalUsage = stats.reduce((sum, stat) => sum + stat.sizeBytes, 0)
 
-  return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+  const modalContent = (
+    <div className="fixed inset-0 w-screen h-screen z-9999 bg-black/80 flex items-center justify-center p-4">
       {/* Notice the added "relative" class here to anchor our custom overlay */}
       <div className="relative bg-gray-900 rounded-lg shadow-xl w-full max-w-3xl flex flex-col border border-gray-700">
         {/* --- NEW: CUSTOM DELETE CONFIRMATION OVERLAY --- */}
@@ -208,4 +215,6 @@ export default function CloudManagerModal({ onClose, onFileDeleted }: CloudManag
       </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }

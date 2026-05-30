@@ -1,10 +1,11 @@
-import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, protocol, net, dialog } from 'electron'
 import { join } from 'path'
 import fsPath from 'path'
 import fs from 'fs/promises'
+import { pathToFileURL, fileURLToPath } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 
-import { CloudSaveStat, FileNode, LibraryData, ScannedFile } from '../shared/types'
+import { AppSettings, CloudSaveStat, FileNode, LibraryData, ScannedFile } from '../shared/types'
 import { loginToGoogle, checkExistingAuth, logoutFromGoogle, cancelGoogleLogin } from './auth'
 import {
   syncLibraryToDrive,
@@ -22,11 +23,16 @@ import { getDiscoverGames, getGameDetails, getGameScreenshots, searchGames } fro
 // Get the secure path where the OS allows our app to save data
 const userDataPath = app.getPath('userData')
 const LIBRARY_FILE_PATH = join(userDataPath, 'library.json')
+const SETTINGS_FILE_PATH = join(userDataPath, 'settings.json')
 
 // Helper to get an empty library template
 const getEmptyLibrary = (): LibraryData => ({
   lastUpdated: new Date().toISOString(),
   games: {}
+})
+
+const getDefaultSettings = (): AppSettings => ({
+  userProfile: { name: 'Gamer 47', avatar: '' } // Uses your actual name as the default!
 })
 
 // Setup IPC Handlers before the window loads
@@ -94,6 +100,31 @@ function setupIpcHandlers() {
     }
   })
 
+  ipcMain.handle('load-settings', async (): Promise<AppSettings> => {
+    try {
+      const fileData = await fs.readFile(SETTINGS_FILE_PATH, 'utf-8')
+      return JSON.parse(fileData) as AppSettings
+    } catch (error: any) {
+      if (error.code === 'ENOENT') {
+        return getDefaultSettings()
+      }
+      console.error('Error reading settings:', error)
+      return getDefaultSettings()
+    }
+  })
+
+  ipcMain.handle('save-settings', async (_, data: AppSettings): Promise<boolean> => {
+    try {
+      const safeData = data || getDefaultSettings()
+
+      await fs.writeFile(SETTINGS_FILE_PATH, JSON.stringify(safeData, null, 2), 'utf-8')
+      return true
+    } catch (error) {
+      console.error('Failed to save settings:', error)
+      return false
+    }
+  })
+
   ipcMain.handle('force-sync', async (event): Promise<boolean> => {
     try {
       const isLoggedIn = await checkExistingAuth()
@@ -140,7 +171,8 @@ function setupIpcHandlers() {
       await fs.copyFile(sourcePath, destPath)
 
       // Return the safe local file protocol path so React can render it
-      return `file://${destPath}`
+      const safeUrl = pathToFileURL(destPath).href
+      return safeUrl.replace('file://', 'local://')
     } catch (error) {
       console.error('Failed to import wallpaper:', error)
       return null
@@ -305,6 +337,87 @@ function setupIpcHandlers() {
     }
   })
 
+  // --- AVATAR ENGINE ---
+  ipcMain.handle('select-avatar', async () => {
+    try {
+      const { canceled, filePaths } = await dialog.showOpenDialog({
+        title: 'Select Profile Picture',
+        properties: ['openFile'],
+        filters: [{ name: 'Images', extensions: ['jpg', 'png', 'gif', 'webp'] }]
+      })
+
+      if (canceled || filePaths.length === 0) return null
+
+      const sourcePath = filePaths[0]
+      const ext = fsPath.extname(sourcePath)
+
+      // Secure local caching directory
+      const avatarDir = fsPath.join(app.getPath('userData'), 'avatars')
+      await fs.mkdir(avatarDir, { recursive: true })
+
+      // Create a unique cached file
+      const destPath = fsPath.join(avatarDir, `avatar_${Date.now()}${ext}`)
+      await fs.copyFile(sourcePath, destPath)
+
+      const safeUrl = pathToFileURL(destPath).href
+      return safeUrl.replace('file://', 'local://')
+    } catch (error) {
+      console.error('Failed to import avatar:', error)
+      return null
+    }
+  })
+
+  ipcMain.handle('save-cropped-avatar', async (_, base64Data: string) => {
+    try {
+      const avatarDir = fsPath.join(app.getPath('userData'), 'avatars')
+      await fs.mkdir(avatarDir, { recursive: true })
+
+      // Strip the metadata prefix (e.g., "data:image/png;base64,")
+      const base64Image = base64Data.split(';base64,').pop()
+      if (!base64Image) throw new Error('Invalid base64 data')
+
+      // Save as a permanent PNG
+      const destPath = fsPath.join(avatarDir, `avatar_cropped_${Date.now()}.png`)
+      await fs.writeFile(destPath, base64Image, { encoding: 'base64' })
+
+      // Format safely for the custom local:// protocol
+      const safeUrl = pathToFileURL(destPath).href
+      return safeUrl.replace('file://', 'local://')
+    } catch (error) {
+      console.error('Failed to save cropped avatar:', error)
+      return null
+    }
+  })
+
+  ipcMain.handle('download-avatar-url', async (_, imageUrl: string) => {
+    try {
+      // Native Node fetch to grab the image/GIF from the web
+      const response = await fetch(imageUrl)
+      if (!response.ok) throw new Error('Failed to fetch image')
+
+      const arrayBuffer = await response.arrayBuffer()
+      const buffer = Buffer.from(arrayBuffer)
+
+      const avatarDir = fsPath.join(app.getPath('userData'), 'avatars')
+      await fs.mkdir(avatarDir, { recursive: true })
+
+      // Extract extension from URL, default to .png if missing
+      const urlExt = imageUrl.split('.').pop()?.split('?')[0] || 'png'
+      const ext = ['gif', 'png', 'jpg', 'jpeg', 'webp'].includes(urlExt.toLowerCase())
+        ? `.${urlExt}`
+        : '.png'
+
+      const destPath = fsPath.join(avatarDir, `avatar_${Date.now()}${ext}`)
+      await fs.writeFile(destPath, buffer)
+
+      const safeUrl = pathToFileURL(destPath).href
+      return safeUrl.replace('file://', 'local://')
+    } catch (error) {
+      console.error('Avatar URL download failed:', error)
+      return null
+    }
+  })
+
   ipcMain.handle('get-cloud-stats', async (): Promise<CloudSaveStat[]> => {
     return await getCloudStorageStats()
   })
@@ -380,8 +493,44 @@ function createWindow(): void {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'local',
+    privileges: {
+      secure: true,
+      supportFetchAPI: true,
+      bypassCSP: true, // This allows the <img> tag to bypass Content Security Policy blocks
+      corsEnabled: true
+    }
+  }
+])
+
 app.whenReady().then(() => {
   // Set app user model id for windows
+
+  protocol.handle('local', (request) => {
+    try {
+      // 1. Convert local:// back to standard file:// and fix any legacy backslashes
+      const fileUrl = request.url.replace('local://', 'file://').replace(/\\/g, '/')
+
+      // 2. Safely decode the Web URL back to a native Windows/Mac OS file path
+      const filePath = fileURLToPath(fileUrl)
+
+      // 3. SECURITY CHECK
+      if (!filePath.startsWith(app.getPath('userData'))) {
+        console.error('Blocked unauthorized local file access:', filePath)
+        return new Response('Access Denied', { status: 403 })
+      }
+
+      // 4. Serve the file securely
+      return net.fetch(fileUrl)
+    } catch (error) {
+      console.error('Failed to parse local protocol URL:', error)
+      return new Response('Bad Request', { status: 400 })
+    }
+  })
+
   setupIpcHandlers()
   electronApp.setAppUserModelId('com.electron')
 

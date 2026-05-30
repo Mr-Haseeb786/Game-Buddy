@@ -49,9 +49,15 @@ const api: ElectronAPI = {
   getGameDetails: (id: number) => ipcRenderer.invoke('get-game-details', id),
   getGameScreenshots: (id: number) => ipcRenderer.invoke('get-game-screenshots', id),
 
+  loadSettings: () => ipcRenderer.invoke('load-settings'),
+  saveSettings: (data: any) => ipcRenderer.invoke('save-settings', data),
+
   importWallpaper: () => ipcRenderer.invoke('import-wallpaper'),
   getCloudStorageStats: () => ipcRenderer.invoke('get-cloud-stats'),
-  deleteCloudSave: (fileId) => ipcRenderer.invoke('delete-cloud-save', fileId)
+  deleteCloudSave: (fileId) => ipcRenderer.invoke('delete-cloud-save', fileId),
+  selectAvatar: () => ipcRenderer.invoke('select-avatar'),
+  saveCroppedAvatar: (base64Data: string) => ipcRenderer.invoke('save-cropped-avatar', base64Data),
+  downloadAvatarUrl: (url: string) => ipcRenderer.invoke('download-avatar-url', url)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
