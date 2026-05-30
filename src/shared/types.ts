@@ -40,6 +40,23 @@ export interface ElectronAPI {
   saveCroppedAvatar: (base64Data: string) => Promise<string | null>
 }
 
+export interface NetworkTask {
+  id: string // Usually the rawgId combined with a timestamp
+  title: string // e.g., "The Witcher 3: Wild Hunt"
+  type: 'upload' | 'download' | 'system'
+  progress: number // 0 to 100
+  status: 'active' | 'completed' | 'error'
+}
+
+export interface SystemNotification {
+  id: string
+  title: string
+  message: string
+  type: 'info' | 'success' | 'warning' | 'error'
+  timestamp: number
+  read: boolean
+}
+
 export interface UserProfile {
   name: string
   avatar: string

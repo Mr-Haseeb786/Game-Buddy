@@ -1,6 +1,6 @@
 // src/renderer/src/App.tsx
 import { useState, useEffect } from 'react'
-import { AppSettings, FileNode } from '../../shared/types'
+import { AppSettings, FileNode, NetworkTask, SystemNotification } from '../../shared/types'
 import { LibraryData, GameEntry } from '../../shared/types'
 import { GameSearch } from './components/GameSearch'
 import { RawgGame } from 'src/shared/rawg'
@@ -28,9 +28,6 @@ export default function App() {
   const [selectedGame, setSelectedGame] = useState<any | null>(null)
   const [clickSource, setClickSource] = useState<'grid' | 'hero'>('grid')
 
-  const [files, setFiles] = useState<FileNode[]>([])
-  const [error, setError] = useState<string | null>(null)
-
   const [library, setLibrary] = useState<LibraryData | null>(null)
   const [syncState, setSyncState] = useState<SyncStatus>('idle')
 
@@ -46,6 +43,8 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState<{ id: string; title: string } | null>(null)
 
   const [settings, setSettings] = useState<AppSettings | null>(null)
+  const [networkTasks, setNetworkTasks] = useState<NetworkTask[]>([])
+  const [notifications, setNotifications] = useState<SystemNotification[]>([])
 
   // Load the library when the app opens
   useEffect(() => {
@@ -91,6 +90,32 @@ export default function App() {
 
     checkAuthAndHydrate()
   }, [])
+
+  // Helper to push a new notification globally
+  const pushNotification = (
+    title: string,
+    message: string,
+    type: SystemNotification['type'] = 'info'
+  ) => {
+    setNotifications((prev) =>
+      [
+        {
+          id: `notif-${Date.now()}-${Math.random()}`,
+          title,
+          message,
+          type,
+          timestamp: Date.now(),
+          read: false
+        },
+        ...prev
+      ].slice(0, 50)
+    ) // Keep the last 50 alerts in memory
+  }
+
+  // Helper to mark all as read
+  const handleMarkNotificationsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+  }
 
   // The Switcher Function
   const renderActiveView = () => {
@@ -266,7 +291,11 @@ export default function App() {
 
       if (success) {
         setIsAuthenticated(true)
-
+        pushNotification(
+          'Secure Uplink Established',
+          'Successfully authenticated with Google Drive. Telemetry is active.',
+          'success'
+        )
         // HYDRATION: The moment they log in, pull their historical data!
         setSyncState('syncing') // Borrow our UI state to show it's working
         const cloudLibrary = await window.api.restoreFromCloud()
@@ -507,7 +536,14 @@ export default function App() {
   const existingIds = Object.values(library.games).map((g) => g.rawgId)
 
   return (
-    <MainLayout>
+    <MainLayout
+      settings={settings}
+      syncState={syncState}
+      isAuthenticated={isAuthenticated}
+      networkTasks={networkTasks}
+      notifications={notifications}
+      onMarkNotificationsRead={handleMarkNotificationsRead}
+    >
       {renderActiveView()}
       <div className="p-8 min-h-screen bg-gray-900 text-gray-100 font-sans">
         {managingGame && (
@@ -533,31 +569,65 @@ export default function App() {
             onClose={() => setBackingUpGame(null)}
             onSync={async (checkedFiles) => {
               try {
-                console.log(`Starting zip and upload for ${checkedFiles.length} files...`)
+                // 1. Create a unique ID for this task
+                const taskId = `upload-${backingUpGame.rawgId}-${Date.now()}`
 
-                // 1. Start listening to the live progress stream from Node.js
+                // 2. Add the task to the UI immediately
+                setNetworkTasks((prev) => [
+                  {
+                    id: taskId,
+                    title: backingUpGame.title,
+                    type: 'upload',
+                    progress: 0,
+                    status: 'active'
+                  },
+                  ...prev
+                ])
+
+                // 3. Start listening to the live progress stream
                 const cleanupListener = window.api.onSaveProgress(
                   backingUpGame.rawgId,
                   (percent) => {
-                    console.log(`Upload Progress: ${percent}%`)
-                    // (Later, we can tie this to a real progress bar UI!)
+                    // Instantly update the progress bar in the Action Center
+                    setNetworkTasks((prev) =>
+                      prev.map((task) =>
+                        task.id === taskId ? { ...task, progress: percent } : task
+                      )
+                    )
                   }
                 )
 
-                // 2. Trigger the actual Zipping & Uploading Engine
+                // 4. Trigger the Zipping & Uploading Engine
                 const success = await window.api.syncGameSave(backingUpGame.rawgId, checkedFiles)
 
-                // 3. Clean up and close
                 cleanupListener()
+
                 if (success) {
+                  // 5. Mark as complete, wait 3 seconds, then remove from drawer
+                  setNetworkTasks((prev) =>
+                    prev.map((task) =>
+                      task.id === taskId ? { ...task, progress: 100, status: 'completed' } : task
+                    )
+                  )
+                  setTimeout(() => {
+                    setNetworkTasks((prev) => prev.filter((t) => t.id !== taskId))
+                  }, 3000)
+
                   const freshLibrary = await window.api.loadLibrary()
                   setLibrary(freshLibrary)
-                  alert('Backup successfully zipped and uploaded to Google Drive!')
                 }
                 setBackingUpGame(null)
               } catch (error) {
                 console.error('Backup failed:', error)
-                alert('Failed to upload backup. Check the console for details.')
+                // Mark as error so the user sees the red failure state
+                setNetworkTasks((prev) =>
+                  prev.map((task) =>
+                    task.id ===
+                    `upload-${backingUpGame.rawgId}-${Date.now()}` /* (Ensure you match the right ID here in practice) */
+                      ? { ...task, status: 'error' }
+                      : task
+                  )
+                )
               }
             }}
           />
