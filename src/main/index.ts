@@ -418,6 +418,44 @@ function setupIpcHandlers() {
     }
   })
 
+  ipcMain.handle('get-avatar-history', async () => {
+    try {
+      const avatarDir = fsPath.join(app.getPath('userData'), 'avatars')
+      // Ensure the directory exists so it doesn't crash on first run
+      await fs.mkdir(avatarDir, { recursive: true })
+
+      const files = await fs.readdir(avatarDir)
+
+      // Convert all physical files into secure local:// URLs
+      return files.map((file) => {
+        const filePath = fsPath.join(avatarDir, file)
+        const safeUrl = pathToFileURL(filePath).href
+        return safeUrl.replace('file://', 'local://')
+      })
+    } catch (error) {
+      console.error('Failed to read avatar history:', error)
+      return []
+    }
+  })
+
+  ipcMain.handle('delete-avatar', async (_, avatarUrl: string) => {
+    try {
+      // 1. Translate local:// back to a physical OS path
+      const fileUrl = avatarUrl.replace('local://', 'file://').replace(/\\/g, '/')
+      const filePath = fileURLToPath(fileUrl)
+
+      // 2. SECURITY CHECK: Ensure they are only deleting from the app's secure folder
+      if (!filePath.startsWith(app.getPath('userData'))) return false
+
+      // 3. Delete the file
+      await fs.unlink(filePath)
+      return true
+    } catch (error) {
+      console.error('Failed to delete avatar:', error)
+      return false
+    }
+  })
+
   ipcMain.handle('get-cloud-stats', async (): Promise<CloudSaveStat[]> => {
     return await getCloudStorageStats()
   })

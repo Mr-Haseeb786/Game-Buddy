@@ -13,10 +13,12 @@ import {
   CheckCircle2,
   Gamepad2,
   ShieldCheck,
-  Loader2
+  Loader2,
+  Grid
 } from 'lucide-react'
 import { GameEntry } from 'src/shared/types'
 import AvatarCropModal from '@renderer/components/AvatarCropModal'
+import AvatarGalleryModal from '@renderer/components/AvatarGalleryModal'
 
 // A smooth counter component for AAA telemetry stats
 const AnimatedCounter = ({ value, suffix = '' }: { value: number; suffix?: string }) => {
@@ -69,6 +71,7 @@ export default function ProfileView({
   const [isDownloading, setIsDownloading] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null)
+  const [galleryOpen, setGalleryOpen] = useState(false)
 
   useEffect(() => {
     if (showLogoutConfirm) {
@@ -114,21 +117,36 @@ export default function ProfileView({
   const handleLocalAvatar = async () => {
     setAvatarMenuOpen(false)
     const localPath = await window.api.selectAvatar()
-    if (localPath) setCropImageSrc(localPath)
+
+    if (localPath) {
+      // SMART BYPASS: If it's a GIF, skip canvas cropping so we don't lose the animation!
+      if (localPath.toLowerCase().endsWith('.gif')) {
+        onUpdateProfile({ avatar: localPath })
+      } else {
+        setCropImageSrc(localPath)
+      }
+    }
   }
 
   const handleUrlAvatar = async () => {
     if (!avatarUrl.trim()) return
     setIsDownloading(true)
+
     const cachedPath = await window.api.downloadAvatarUrl(avatarUrl.trim())
+
     if (cachedPath) {
-      onUpdateProfile({ avatar: cachedPath })
-      setCropImageSrc(cachedPath)
+      // SMART BYPASS: If it's a GIF, skip canvas cropping so we don't lose the animation!
+      if (cachedPath.toLowerCase().endsWith('.gif')) {
+        onUpdateProfile({ avatar: cachedPath })
+      } else {
+        setCropImageSrc(cachedPath)
+      }
       setUrlInputOpen(false)
       setAvatarUrl('')
     } else {
       alert('Failed to download image. Check the URL.')
     }
+
     setIsDownloading(false)
   }
 
@@ -238,6 +256,18 @@ export default function ProfileView({
                     className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/10 transition-colors"
                   >
                     <LinkIcon size={16} /> Paste GIF/Image Link
+                  </button>
+                  <div className="h-[1px] w-full bg-white/5 my-1" />
+
+                  {/* NEW: Browse Archive Button */}
+                  <button
+                    onClick={() => {
+                      setGalleryOpen(true)
+                      setAvatarMenuOpen(false)
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-accent hover:bg-white/10 transition-colors font-medium"
+                  >
+                    <Grid size={16} /> Browse Archive
                   </button>
                 </motion.div>
               )}
@@ -445,6 +475,18 @@ export default function ProfileView({
               }
               // 3. Close the cropper
               setCropImageSrc(null)
+            }}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {galleryOpen && (
+          <AvatarGalleryModal
+            currentAvatar={profile.avatar}
+            onClose={() => setGalleryOpen(false)}
+            onSelect={(url) => {
+              onUpdateProfile({ avatar: url })
+              setGalleryOpen(false)
             }}
           />
         )}

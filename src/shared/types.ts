@@ -38,6 +38,8 @@ export interface ElectronAPI {
   loadSettings: () => Promise<AppSettings>
   saveSettings: (settings: AppSettings) => Promise<boolean>
   saveCroppedAvatar: (base64Data: string) => Promise<string | null>
+  getAvatarHistory: () => Promise<string[]>
+  deleteAvatar: (avatarUrl: string) => Promise<boolean>
 }
 
 export interface NetworkTask {

@@ -57,7 +57,9 @@ const api: ElectronAPI = {
   deleteCloudSave: (fileId) => ipcRenderer.invoke('delete-cloud-save', fileId),
   selectAvatar: () => ipcRenderer.invoke('select-avatar'),
   saveCroppedAvatar: (base64Data: string) => ipcRenderer.invoke('save-cropped-avatar', base64Data),
-  downloadAvatarUrl: (url: string) => ipcRenderer.invoke('download-avatar-url', url)
+  downloadAvatarUrl: (url: string) => ipcRenderer.invoke('download-avatar-url', url),
+  getAvatarHistory: () => ipcRenderer.invoke('get-avatar-history'),
+  deleteAvatar: (url: string) => ipcRenderer.invoke('delete-avatar', url)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
