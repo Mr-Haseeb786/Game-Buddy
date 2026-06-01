@@ -19,6 +19,7 @@ import HeroCarousel from '../components/layout/HeroCarousel'
 import { FaWindows, FaPlaystation, FaXbox, FaApple, FaLinux, FaAndroid } from 'react-icons/fa'
 import { BsNintendoSwitch } from 'react-icons/bs'
 import { MdPhoneIphone } from 'react-icons/md'
+import { AppSettings } from 'src/shared/types'
 
 // --- THE STATUS COLOR ENGINE ---
 export const STATUS_CONFIG = {
@@ -43,13 +44,15 @@ interface SearchViewProps {
   onAddGame?: (game: Game, status: string) => void
   onGameClick?: (game: Game, source: 'grid' | 'hero') => void
   onViewCategory?: (id: string, title: string) => void
+  settings: AppSettings | null
 }
 
 export default function SearchView({
   libraryData = {},
   onAddGame,
   onGameClick,
-  onViewCategory
+  onViewCategory,
+  settings
 }: SearchViewProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
@@ -151,6 +154,7 @@ export default function SearchView({
               libraryData={libraryData}
               onAddGame={onAddGame}
               onGameClick={onGameClick}
+              settings={settings}
             />
             <GameRow
               title="Trending Now"

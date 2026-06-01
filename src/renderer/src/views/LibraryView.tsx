@@ -75,7 +75,7 @@ export default function LibraryView({
 
   // --- 3. UI RENDERING ---
   return (
-    <div className="min-h-screen bg-primary pt-24 pb-20 px-8 flex flex-col">
+    <div className="min-h-screen pt-2 pb-20 px-8 flex flex-col">
       <div className="max-w-[1600px] w-full mx-auto flex-1 flex flex-col">
         {/* HEADER: The Command Center */}
         <div className="flex flex-col md:flex-row justify-between items-end gap-4 mb-8">

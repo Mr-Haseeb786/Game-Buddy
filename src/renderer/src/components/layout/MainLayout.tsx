@@ -13,6 +13,7 @@ import {
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
 import { NetworkTask, SystemNotification } from 'src/shared/types'
+import { useUI } from '@renderer/context/UIContext'
 
 interface MainLayoutProps {
   children: ReactNode
@@ -22,6 +23,7 @@ interface MainLayoutProps {
   networkTasks?: NetworkTask[]
   notifications?: SystemNotification[]
   onMarkNotificationsRead?: () => void
+  onToggleEcoMode?: (ecoMode: boolean) => void
 }
 
 export default function MainLayout({
@@ -31,10 +33,19 @@ export default function MainLayout({
   isAuthenticated,
   networkTasks = [],
   notifications = [],
-  onMarkNotificationsRead
+  onMarkNotificationsRead,
+  onToggleEcoMode
 }: MainLayoutProps) {
   // Tracks which side panel is open
   const [activePanel, setActivePanel] = useState<'downloads' | 'notifications' | null>(null)
+  const { currentPage } = useUI()
+  const advancedOpts = settings?.preferences?.advancedVisuals || {
+    showSearchWallpaper: false,
+    enableSearchAmbience: true
+  }
+
+  const shouldShowWallpaper = currentPage === 'search' ? advancedOpts.showSearchWallpaper : true
+  const shouldShowAmbience = currentPage === 'search' ? advancedOpts.enableSearchAmbience : true
 
   const handleTogglePanel = (panel: 'downloads' | 'notifications') => {
     if (panel === 'notifications' && activePanel !== 'notifications') {
@@ -45,13 +56,17 @@ export default function MainLayout({
 
   return (
     // Added 'relative z-0' here to establish the master stacking context
-    <div className="flex h-screen w-full text-textMain overflow-hidden selection:bg-accent/30 bg-primary relative z-0">
+    <div
+      className={`flex h-screen w-full text-textMain overflow-hidden selection:bg-accent/30 relative z-0 ${shouldShowWallpaper ? 'bg-transparent' : 'bg-primary'}`}
+    >
       {/* --- THE AAA GLOBAL AMBIENT BLEED --- */}
       {/* This sits permanently in the background. It reads the CSS variable broadcasted by the Carousel */}
-      <div
-        className="absolute top-[-10%] right-[-5%] w-[800px] h-[700px] rounded-full blur-[150px] pointer-events-none transition-colors duration-1000 ease-in-out -z-10"
-        style={{ backgroundColor: 'var(--app-active-ambiance, transparent)' }}
-      />
+      {shouldShowAmbience && (
+        <div
+          className="absolute top-[-10%] right-[-5%] w-[800px] h-[700px] rounded-full blur-[150px] pointer-events-none transition-colors duration-1000 ease-in-out -z-10"
+          style={{ backgroundColor: 'var(--app-active-ambiance, transparent)' }}
+        />
+      )}
 
       <Sidebar />
 
@@ -63,10 +78,17 @@ export default function MainLayout({
           activePanel={activePanel}
           onTogglePanel={handleTogglePanel}
           unreadNotificationsCount={notifications.filter((n) => !n.read).length}
+          onToggleEcoMode={onToggleEcoMode}
         />
 
         {/* Because the glow is now in the background, we make this container slightly translucent to let it shine through */}
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-8 bg-secondary/80 rounded-[2rem] border border-modifier/30 shadow-2xl backdrop-blur-xl relative z-0">
+        <main
+          className={`flex-1 overflow-y-auto custom-scrollbar p-8 rounded-[2rem] border border-modifier/30 shadow-2xl  relative z-0 ${
+            currentPage === 'settings'
+              ? 'bg-secondary/20 backdrop-blur-xs' // Heavy frost for Settings
+              : 'bg-transparent backdrop-blur-none ' // Fully clear for Library/Search/Profile
+          }`}
+        >
           {children}
         </main>
       </div>

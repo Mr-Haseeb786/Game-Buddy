@@ -14,7 +14,7 @@ export default function Sidebar() {
         ${
           performanceMode
             ? 'bg-primary' /* Solid fallback for performance */
-            : 'bg-primary/70 backdrop-blur-xl' /* Premium Frosted Glass */
+            : 'bg-primary/30 backdrop-blur-xs' /* Premium Frosted Glass */
         }
       `}
     >

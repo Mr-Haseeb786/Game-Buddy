@@ -151,7 +151,7 @@ export default function GamePage({
         </div>
       </div>
       {/* --- 2. TOP NAVIGATION --- */}
-      <div className="fixed top-0 left-0 right-0 p-6 z-110 flex justify-between items-center bg-gradient-to-b from-primary/80 to-transparent ">
+      <div className="absolute top-0 left-0 right-0 p-6 z-9999 flex justify-between items-center bg-gradient-to-b  ">
         <button
           onClick={onBack}
           className="p-3 bg-black/50 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-colors border border-white/10 shadow-lg cursor-pointer"

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence, PanInfo } from 'framer-motion'
 import { Star, Calendar, Check } from 'lucide-react'
 import { STATUS_CONFIG, InteractiveLibraryPill } from '../../views/SearchView'
+import { AppSettings } from 'src/shared/types'
 
 interface Game {
   id: number
@@ -19,6 +20,7 @@ interface HeroCarouselProps {
   libraryData?: Record<number, any>
   onAddGame?: (game: Game, status: string) => void
   onGameClick?: (game: Game, source: 'grid' | 'hero') => void
+  settings?: AppSettings | null
 }
 
 // Vibrant colors matching game vibes
@@ -62,7 +64,8 @@ export default function HeroCarousel({
   searchQuery,
   libraryData = {},
   onAddGame,
-  onGameClick
+  onGameClick,
+  settings
 }: HeroCarouselProps) {
   const [[page, direction], setPage] = useState([0, 0])
 
@@ -84,14 +87,22 @@ export default function HeroCarousel({
     return () => clearInterval(interval)
   }, [gamesToDisplay, searchQuery, page])
 
+  const enableSearchAmbience = settings?.preferences?.advancedVisuals?.enableSearchAmbience ?? true
+
   useEffect(() => {
+    // OPTIMIZATION: If disabled by user, clear property and do not calculate glow!
+    if (!enableSearchAmbience) {
+      document.documentElement.style.removeProperty('--app-active-ambiance')
+      return
+    }
+
     const globalGlow = currentColor.replace('0.4', '0.3')
     document.documentElement.style.setProperty('--app-active-ambiance', globalGlow)
 
     return () => {
       document.documentElement.style.removeProperty('--app-active-ambiance')
     }
-  }, [currentColor])
+  }, [currentColor, enableSearchAmbience])
 
   const swipePower = (offset: number, velocity: number) => Math.abs(offset) * velocity
   const handleDragEnd = (e: any, { offset, velocity }: PanInfo) => {
@@ -111,8 +122,13 @@ export default function HeroCarousel({
   return (
     <motion.div
       animate={{
-        boxShadow: `0px 20px 120px -20px ${currentColor}`,
-        borderColor: currentColor.replace('0.4', '0.2')
+        // If disabled, transition the shadow to transparent and the border to a neutral dark tone
+        boxShadow: enableSearchAmbience
+          ? `0px 20px 120px -20px ${currentColor}`
+          : '0px 20px 120px -20px transparent',
+        borderColor: enableSearchAmbience
+          ? currentColor.replace('0.4', '0.2')
+          : 'rgba(255, 255, 255, 0.05)'
       }}
       transition={{ duration: 1.5, ease: 'easeInOut' }}
       className="relative h-[28rem] rounded-[2rem] bg-primary border-2 shadow-2xl transition-all"

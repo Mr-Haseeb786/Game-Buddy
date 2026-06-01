@@ -59,7 +59,12 @@ const api: ElectronAPI = {
   saveCroppedAvatar: (base64Data: string) => ipcRenderer.invoke('save-cropped-avatar', base64Data),
   downloadAvatarUrl: (url: string) => ipcRenderer.invoke('download-avatar-url', url),
   getAvatarHistory: () => ipcRenderer.invoke('get-avatar-history'),
-  deleteAvatar: (url: string) => ipcRenderer.invoke('delete-avatar', url)
+  deleteAvatar: (url: string) => ipcRenderer.invoke('delete-avatar', url),
+  downloadWallpaperUrl: (url: string) => ipcRenderer.invoke('download-wallpaper-url', url),
+  getWallpaperHistory: () => ipcRenderer.invoke('get-wallpaper-history'),
+  deleteWallpaper: (url: string) => ipcRenderer.invoke('delete-wallpaper', url),
+  saveCroppedWallpaper: (data: string) => ipcRenderer.invoke('save-cropped-wallpaper', data),
+  readImageBase64: (url: string) => ipcRenderer.invoke('read-image-base64', url)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

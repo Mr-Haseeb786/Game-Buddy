@@ -125,7 +125,7 @@ export default function LibraryGridCard({ game, onUpdate, onBackup, onRemoveGame
               src={displayImage}
               alt=""
               onError={() => setImgError(true)}
-              className="w-full h-full object-cover opacity-50 group-hover:scale-110 group-hover:opacity-70 transition-all duration-[800ms] ease-out"
+              className="w-full h-full object-cover opacity-95 group-hover:scale-110 group-hover:opacity-70 transition-all duration-[800ms] ease-out"
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent opacity-90" />
@@ -140,7 +140,7 @@ export default function LibraryGridCard({ game, onUpdate, onBackup, onRemoveGame
       >
         <motion.div
           layout
-          className="flex flex-col bg-black/80 backdrop-blur-xl border border-white/10 shadow-[0_0_20px_rgba(0,0,0,0.8)] overflow-hidden"
+          className="flex flex-col bg-black/50 backdrop-blur-xl border border-white/10 shadow-[0_0_20px_rgba(0,0,0,0.8)] overflow-hidden"
           style={{ borderRadius: isPillHovered ? 16 : 12, padding: isPillHovered ? 8 : 0 }}
         >
           <AnimatePresence mode="popLayout" initial={false}>

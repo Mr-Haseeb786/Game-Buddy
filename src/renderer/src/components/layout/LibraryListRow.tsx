@@ -110,7 +110,7 @@ export default function LibraryListRow({ game, onUpdate, onBackup, onRemoveGame 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.98 }}
-      className={`group relative flex items-center w-full h-[72px] rounded-xl bg-[#121212] border border-white/5 shadow-sm hover:bg-white/5 hover:border-white/10 hover:shadow-lg transition-all duration-300 ${isSettingsOpen || isStatusMenuOpen || pendingDelete ? 'z-50 ring-1 ring-white/10' : 'z-10'}`}
+      className={`group relative flex items-center w-full h-[72px] rounded-xl bg-secondary/50 backdrop-blur-xs border border-white/5 shadow-sm hover:bg-white/5 hover:border-white/10 hover:shadow-lg transition-all duration-300 ${isSettingsOpen || isStatusMenuOpen || pendingDelete ? 'z-50 ring-1 ring-white/10' : 'z-10'}`}
     >
       {/* 1. THE STATUS EDGE (Left Accent Line) */}
       <div

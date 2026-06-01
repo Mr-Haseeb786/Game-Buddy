@@ -40,6 +40,11 @@ export interface ElectronAPI {
   saveCroppedAvatar: (base64Data: string) => Promise<string | null>
   getAvatarHistory: () => Promise<string[]>
   deleteAvatar: (avatarUrl: string) => Promise<boolean>
+  downloadWallpaperUrl: (url: string) => Promise<string | null>
+  getWallpaperHistory: () => Promise<string[]>
+  deleteWallpaper: (url: string) => Promise<boolean>
+  saveCroppedWallpaper: (base64Data: string) => Promise<string | null>
+  readImageBase64: (url: string) => Promise<string | null>
 }
 
 export interface NetworkTask {
@@ -48,6 +53,25 @@ export interface NetworkTask {
   type: 'upload' | 'download' | 'system'
   progress: number // 0 to 100
   status: 'active' | 'completed' | 'error'
+}
+
+export interface AppPreferences {
+  theme: 'default' | 'cyberpunk' | 'midnight'
+  ecoMode: boolean
+  wallpaper?: string
+  advancedVisuals?: {
+    showSearchWallpaper: boolean // default: false
+    enableSearchAmbience: boolean // default: true
+  }
+  customTheme?: CustomThemePayload
+}
+
+export type ChassisType = 'obsidian' | 'oled' | 'midnight'
+
+export interface CustomThemePayload {
+  enabled: boolean
+  chassis: ChassisType
+  energyCore: string // The primary hex color
 }
 
 export interface SystemNotification {
@@ -66,6 +90,7 @@ export interface UserProfile {
 
 export interface AppSettings {
   userProfile: UserProfile
+  preferences: AppPreferences
 }
 
 export interface ApiResponse<T> {

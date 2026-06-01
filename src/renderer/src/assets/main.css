@@ -71,6 +71,19 @@ body,
     --app-accent-hover: #eab308;
     --app-danger: #f43f5e;
   }
+
+  .theme-midnight {
+    --app-bg-primary: #05100a;
+    --app-bg-secondary: #0a1a12;
+    --app-bg-modifier: #112a1d;
+
+    --app-text-main: #e2fbe9;
+    --app-text-muted: #a7f3d0;
+
+    --app-accent: #34d399;
+    --app-accent-hover: #10b981;
+    --app-danger: #ef4444;
+  }
 }
 
 /* 2. Tell Tailwind v4 to generate utility classes from our variables */
@@ -85,6 +98,16 @@ body,
   --color-accent: var(--app-accent);
   --color-accent-hover: var(--app-accent-hover);
   --color-danger: var(--app-danger);
+}
+
+/* --- ECO MODE OVERRIDES --- */
+/* If Eco Mode is active, strip out expensive CSS filters at the browser level */
+[data-eco='true'] * {
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+[data-eco='true'] .bg-secondary\/80 {
+  background-color: var(--color-secondary) !important; /* Make translucent panels solid */
 }
 
 /* Enable native window dragging in Electron */

@@ -187,7 +187,7 @@ export default function ProfileView({
   }, [isAuthenticated, syncState])
 
   return (
-    <div className="w-full min-h-screen bg-[#0a0a0a] pb-20">
+    <div className="w-full min-h-screen  pb-20">
       {/* --- 1. HERO IDENTITY BANNER --- */}
       <div className="relative h-[300px] w-full flex items-end">
         {/* Parallax Background (overflow-hidden moved here!) */}
@@ -224,7 +224,7 @@ export default function ProfileView({
               {/* Glassmorphism Hover Overlay */}
               <button
                 onClick={() => setAvatarMenuOpen(!avatarMenuOpen)}
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center cursor-pointer"
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center cursor-pointer rounded-3xl"
               >
                 <Camera
                   size={28}
@@ -358,7 +358,7 @@ export default function ProfileView({
           className="lg:col-span-2 grid grid-cols-3 gap-4"
         >
           {/* Stat Block 1 */}
-          <div className="bg-[#121212] border border-white/5 rounded-2xl p-6 flex flex-col justify-center relative overflow-hidden group">
+          <div className="bg-primary/65 backdrop-blur-xs border border-white/5 rounded-2xl p-6 flex flex-col justify-center relative overflow-hidden group">
             <div className="absolute right-0 top-0 opacity-5 text-white/50 transform translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform">
               <Gamepad2 size={120} />
             </div>
@@ -371,7 +371,7 @@ export default function ProfileView({
           </div>
 
           {/* Stat Block 2 */}
-          <div className="bg-[#121212] border border-white/5 rounded-2xl p-6 flex flex-col justify-center relative overflow-hidden group">
+          <div className="bg-primary/65 backdrop-blur-xs border border-white/5 rounded-2xl p-6 flex flex-col justify-center relative overflow-hidden group">
             <div className="absolute right-0 top-0 opacity-5 text-white/50 transform translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform">
               <CheckCircle2 size={120} />
             </div>
@@ -384,7 +384,7 @@ export default function ProfileView({
           </div>
 
           {/* Stat Block 3 */}
-          <div className="bg-[#121212] border border-white/5 rounded-2xl p-6 flex flex-col justify-center relative overflow-hidden group">
+          <div className="bg-primary/65 backdrop-blur-xs border border-white/5 rounded-2xl p-6 flex flex-col justify-center relative overflow-hidden group">
             <div className="absolute right-0 top-0 opacity-5 text-white/50 transform translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform">
               <ShieldCheck size={120} />
             </div>

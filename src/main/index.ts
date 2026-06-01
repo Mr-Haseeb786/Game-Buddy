@@ -32,7 +32,13 @@ const getEmptyLibrary = (): LibraryData => ({
 })
 
 const getDefaultSettings = (): AppSettings => ({
-  userProfile: { name: 'Gamer 47', avatar: '' } // Uses your actual name as the default!
+  userProfile: { name: 'Player One', avatar: '' },
+  preferences: {
+    theme: 'default',
+    ecoMode: false,
+    advancedVisuals: { showSearchWallpaper: false, enableSearchAmbience: true },
+    customTheme: { enabled: false, chassis: 'obsidian', energyCore: '#00c2ff' }
+  }
 })
 
 // Setup IPC Handlers before the window loads
@@ -153,29 +159,142 @@ function setupIpcHandlers() {
   ipcMain.handle('import-wallpaper', async () => {
     try {
       const { canceled, filePaths } = await dialog.showOpenDialog({
-        title: 'Select Custom Wallpaper',
+        title: 'Select Wallpaper',
         properties: ['openFile'],
-        filters: [{ name: 'Media', extensions: ['jpg', 'png', 'mp4', 'webm'] }]
+        filters: [{ name: 'Media Files', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webm', 'mp4'] }]
       })
 
       if (canceled || filePaths.length === 0) return null
 
       const sourcePath = filePaths[0]
-      const fileName = fsPath.basename(sourcePath)
+      const ext = fsPath.extname(sourcePath)
 
-      // Ensure a "wallpapers" directory exists inside the app's secure userData folder
+      // Create a secure wallpapers directory
       const wallpaperDir = fsPath.join(app.getPath('userData'), 'wallpapers')
       await fs.mkdir(wallpaperDir, { recursive: true })
 
+      // Generate a unique filename and copy it over
+      const fileName = `bg_${Date.now()}${ext}`
       const destPath = fsPath.join(wallpaperDir, fileName)
+
+      // For large files (like WebM), copy is much safer and faster than reading to memory
       await fs.copyFile(sourcePath, destPath)
 
-      // Return the safe local file protocol path so React can render it
+      // Translate to our secure local:// protocol
       const safeUrl = pathToFileURL(destPath).href
       return safeUrl.replace('file://', 'local://')
     } catch (error) {
       console.error('Failed to import wallpaper:', error)
       return null
+    }
+  })
+
+  // 1. Download URL to Local Storage
+  ipcMain.handle('download-wallpaper-url', async (_, fileUrl: string) => {
+    try {
+      const response = await fetch(fileUrl)
+      if (!response.ok) throw new Error(`Failed to fetch: ${response.statusText}`)
+
+      const arrayBuffer = await response.arrayBuffer()
+      const buffer = Buffer.from(arrayBuffer)
+
+      // Try to guess the extension from the content-type, default to .png
+      const contentType = response.headers.get('content-type') || ''
+      let ext = '.png'
+      if (contentType.includes('video/mp4')) ext = '.mp4'
+      else if (contentType.includes('video/webm')) ext = '.webm'
+      else if (contentType.includes('image/gif')) ext = '.gif'
+      else if (contentType.includes('image/jpeg')) ext = '.jpg'
+
+      const wallpaperDir = fsPath.join(app.getPath('userData'), 'wallpapers')
+      await fs.mkdir(wallpaperDir, { recursive: true })
+
+      const fileName = `bg_dl_${Date.now()}${ext}`
+      const destPath = fsPath.join(wallpaperDir, fileName)
+
+      await fs.writeFile(destPath, buffer)
+
+      const safeUrl = pathToFileURL(destPath).href
+      return safeUrl.replace('file://', 'local://')
+    } catch (error) {
+      console.error('Failed to download wallpaper:', error)
+      return null
+    }
+  })
+
+  ipcMain.handle('save-cropped-wallpaper', async (_, base64Data: string) => {
+    try {
+      const wallpaperDir = fsPath.join(app.getPath('userData'), 'wallpapers')
+      await fs.mkdir(wallpaperDir, { recursive: true })
+
+      // Strip the data URL header (e.g., "data:image/jpeg;base64,")
+      const base64Image = base64Data.split(';base64,').pop()
+      if (!base64Image) return null
+
+      const fileName = `bg_crop_${Date.now()}.jpg`
+      const destPath = fsPath.join(wallpaperDir, fileName)
+
+      // Write the binary data to the hard drive
+      await fs.writeFile(destPath, base64Image, { encoding: 'base64' })
+
+      const safeUrl = pathToFileURL(destPath).href
+      return safeUrl.replace('file://', 'local://')
+    } catch (error) {
+      console.error('Failed to save cropped wallpaper:', error)
+      return null
+    }
+  })
+
+  ipcMain.handle('read-image-base64', async (_, fileUrl: string) => {
+    try {
+      // 1. Translate local:// to physical path
+      const safeUrl = fileUrl.replace('local://', 'file://').replace(/\\/g, '/')
+      const filePath = fileURLToPath(safeUrl)
+
+      // 2. Read the file buffer
+      const buffer = await fs.readFile(filePath)
+
+      // 3. Determine basic mime type for the Data URI
+      const ext = fsPath.extname(filePath).toLowerCase()
+      let mimeType = 'image/jpeg'
+      if (ext === '.png') mimeType = 'image/png'
+      if (ext === '.webp') mimeType = 'image/webp'
+      if (ext === '.gif') mimeType = 'image/gif'
+
+      // 4. Return the safe Base64 string
+      return `data:${mimeType};base64,${buffer.toString('base64')}`
+    } catch (error) {
+      console.error('Failed to read image as Base64:', error)
+      return null
+    }
+  })
+
+  // 2. Get History
+  ipcMain.handle('get-wallpaper-history', async () => {
+    try {
+      const wallpaperDir = fsPath.join(app.getPath('userData'), 'wallpapers')
+      await fs.mkdir(wallpaperDir, { recursive: true })
+      const files = await fs.readdir(wallpaperDir)
+      return files.map((file) => {
+        const filePath = fsPath.join(wallpaperDir, file)
+        const safeUrl = pathToFileURL(filePath).href
+        return safeUrl.replace('file://', 'local://')
+      })
+    } catch (error) {
+      return []
+    }
+  })
+
+  // 3. Delete Wallpaper
+  ipcMain.handle('delete-wallpaper', async (_, wallpaperUrl: string) => {
+    try {
+      const fileUrl = wallpaperUrl.replace('local://', 'file://').replace(/\\/g, '/')
+      const filePath = fileURLToPath(fileUrl)
+      if (!filePath.startsWith(app.getPath('userData'))) return false
+      await fs.unlink(filePath)
+      return true
+    } catch (error) {
+      return false
     }
   })
 

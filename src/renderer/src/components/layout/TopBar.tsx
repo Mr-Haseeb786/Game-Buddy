@@ -1,4 +1,4 @@
-import { Bell, Download, Cloud, CloudOff, CloudDrizzle, AlertTriangle } from 'lucide-react'
+import { Bell, Download, Cloud, CloudOff, CloudDrizzle, AlertTriangle, Leaf } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useUI } from '../../context/UIContext'
 
@@ -8,7 +8,8 @@ export default function TopBar({
   isAuthenticated,
   activePanel,
   onTogglePanel,
-  unreadNotificationsCount = 0
+  unreadNotificationsCount = 0,
+  onToggleEcoMode
 }: any) {
   const { currentPage, setCurrentPage } = useUI()
 
@@ -17,6 +18,8 @@ export default function TopBar({
 
   // Safely grab the profile
   const profile = settings?.userProfile || { name: 'Player One', avatar: '' }
+
+  const ecoMode = settings?.preferences?.ecoMode || false
 
   // Generate initials for the fallback avatar
   const initials = profile.name
@@ -65,7 +68,7 @@ export default function TopBar({
 
   return (
     // The `drag-region` class lets the user drag the window
-    <header className="h-16 flex items-center justify-between px-8 shrink-0 drag-region z-10 backdrop-blur-md border-b border-white/5">
+    <header className="h-16 flex items-center justify-between px-8 shrink-0 drag-region z-10 backdrop-blur-xs bg-primary/30 rounded-3xl border-b border-white/5">
       {/* 1. Page Title */}
       <div className="flex items-center gap-4 no-drag">
         <h1 className="text-2xl font-black text-white tracking-wide drop-shadow-md">
@@ -91,6 +94,29 @@ export default function TopBar({
             {cloud.label}
           </span>
           <cloud.icon size={14} className={`ml-1 ${cloud.color}`} />
+        </div>
+
+        {/* --- ECO MODE TOGGLE --- */}
+        <div
+          onClick={() => onToggleEcoMode(!ecoMode)}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-modifier/20 border border-modifier/30 cursor-pointer group hover:bg-modifier/40 transition-colors"
+          title="Toggle Hardware Eco Mode"
+        >
+          <Leaf size={14} className={ecoMode ? 'text-emerald-400' : 'text-textMuted'} />
+          <span
+            className={`text-xs font-bold uppercase tracking-wider ${ecoMode ? 'text-emerald-400' : 'text-textMuted'}`}
+          >
+            Eco
+          </span>
+          {/* Framer Motion Toggle Switch */}
+          <div
+            className={`w-8 h-4 rounded-full p-0.5 flex ${ecoMode ? 'bg-emerald-500/30 justify-end' : 'bg-black/50 justify-start'} transition-colors shadow-inner`}
+          >
+            <motion.div
+              layout
+              className={`w-3 h-3 rounded-full shadow-sm ${ecoMode ? 'bg-emerald-400' : 'bg-white/30'}`}
+            />
+          </div>
         </div>
 
         {/* Divider */}
