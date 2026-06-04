@@ -67,7 +67,7 @@ export default function CloudManagerModal({ onClose, onFileDeleted }: CloudManag
   const totalUsage = stats.reduce((sum, stat) => sum + stat.sizeBytes, 0)
 
   const modalContent = (
-    <div className="fixed inset-0 w-screen h-screen z-9999 bg-black/80 flex items-center justify-center p-4">
+    <div className="fixed inset-0 w-screen h-screen z-[9999] bg-black/80 flex items-center justify-center p-4">
       {/* Notice the added "relative" class here to anchor our custom overlay */}
       <div className="relative bg-gray-900 rounded-lg shadow-xl w-full max-w-3xl flex flex-col border border-gray-700">
         {/* --- NEW: CUSTOM DELETE CONFIRMATION OVERLAY --- */}

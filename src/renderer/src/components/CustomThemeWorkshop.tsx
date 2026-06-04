@@ -111,7 +111,7 @@ export default function CustomThemeWorkshop({
               <button
                 key={opt.id}
                 onClick={() => setDraft({ ...draft, chassis: opt.id })}
-                className={`px-4 py-2 rounded-lg text-sm font-bold text-left transition-all ${
+                className={`cursor-pointer px-4 py-2 rounded-lg text-sm font-bold text-left transition-all ${
                   draft.chassis === opt.id
                     ? 'bg-accent/20 text-accent border border-accent/50'
                     : 'bg-primary/50 text-textMuted border border-transparent hover:bg-modifier/30'
@@ -152,7 +152,7 @@ export default function CustomThemeWorkshop({
         {currentPayload?.enabled ? (
           <button
             onClick={onDisable}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-danger/10 text-danger hover:bg-danger/20 text-sm font-bold transition-all"
+            className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-xl bg-danger/10 text-danger hover:bg-danger/20 text-sm font-bold transition-all"
           >
             <Power size={16} /> Disable Custom Engine
           </button>
@@ -162,7 +162,7 @@ export default function CustomThemeWorkshop({
 
         <button
           onClick={() => onSave(draft)}
-          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-accent text-primary text-sm font-black transition-all hover:scale-105 shadow-[0_0_20px_rgba(var(--app-active-ambiance),0.8)]"
+          className="cursor-pointer flex items-center gap-2 px-6 py-2.5 rounded-xl bg-accent text-primary text-sm font-black transition-all hover:scale-105 shadow-[0_0_20px_rgba(var(--app-active-ambiance),0.8)]"
         >
           <PaintBucket size={16} /> Inject Custom Matrix
         </button>

@@ -413,6 +413,24 @@ export default function App() {
     })
   }
 
+  const handleCloudFileDeleted = (fileId: string) => {
+    setLibrary((prev) => {
+      if (!prev) return prev
+      const updatedGames = { ...prev.games }
+
+      Object.values(updatedGames).forEach((game) => {
+        if (game.cloudSaveId === fileId) {
+          // FIX: Use null instead of undefined to satisfy the GameEntry interface
+          updatedGames[game.rawgId] = { ...game, cloudSaveId: null }
+        }
+      })
+
+      const updatedLibrary = { ...prev, games: updatedGames }
+      window.api.saveLibrary(updatedLibrary).catch(console.error)
+      return updatedLibrary
+    })
+  }
+
   // Remove a game
   const handleRemoveGame = async (rawgId: number, deleteFromCloud: boolean) => {
     // 1. Grab the latest target game safely
@@ -489,6 +507,54 @@ export default function App() {
           {renderActiveView()}
         </MainLayout>
       </div>
+
+      {/* --- GLOBAL MODALS --- */}
+      {showCloudManager && (
+        <CloudManagerModal
+          onClose={() => setShowCloudManager(false)}
+          onFileDeleted={handleCloudFileDeleted}
+        />
+      )}
+
+      {backingUpGame && (
+        <BackupModal
+          game={backingUpGame}
+          onClose={() => setBackingUpGame(null)}
+          onSync={async (files) => {
+            // 1. Trigger the upload
+            const success = await window.api.syncGameSave(backingUpGame.rawgId, files)
+
+            let newCloudId = backingUpGame.cloudSaveId
+
+            // 2. THE FIX: If successful, instantly scan Drive for the newly minted file ID
+            if (success) {
+              try {
+                const cloudFiles = await window.api.getCloudStorageStats()
+                // Reconstruct the exact filename your backend uses
+                const expectedFileName = `${backingUpGame.title.replace(/[^a-z0-9]/gi, '_')}_save.zip`
+                const newlyUploadedFile = cloudFiles.find((file) => file.name === expectedFileName)
+
+                if (newlyUploadedFile) {
+                  newCloudId = newlyUploadedFile.id // Grab the ID!
+                }
+              } catch (error) {
+                console.error('Failed to retrieve new cloud ID:', error)
+              }
+            }
+
+            // 3. Update the game state with the new ID
+            const updatedGame = {
+              ...backingUpGame,
+              updatedAt: Date.now(),
+              cloudSaveId: newCloudId // <-- This instantly turns the button blue!
+            }
+
+            // 4. Save and close
+            handleUpdateGame(updatedGame)
+            setBackingUpGame(null)
+          }}
+        />
+      )}
     </div>
   )
 }
