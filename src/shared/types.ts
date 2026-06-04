@@ -64,6 +64,7 @@ export interface AppPreferences {
     enableSearchAmbience: boolean // default: true
   }
   customTheme?: CustomThemePayload
+  immersiveLibraryMode?: boolean
 }
 
 export type ChassisType = 'obsidian' | 'oled' | 'midnight'

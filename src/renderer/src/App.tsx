@@ -196,6 +196,8 @@ export default function App() {
             onUpdateGame={handleUpdateGame}
             onBackupTrigger={(game: any) => setBackingUpGame(game)}
             onRemoveGame={handleRemoveGame}
+            settings={settings}
+            onUpdatePreferences={handleUpdatePreferences}
           />
         )
       case 'search':

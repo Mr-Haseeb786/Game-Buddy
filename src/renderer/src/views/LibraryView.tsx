@@ -7,7 +7,9 @@ import {
   List as ListIcon,
   FolderPlus,
   CloudAlert,
-  ArrowDownWideNarrow
+  ArrowDownWideNarrow,
+  Eye,
+  EyeOff
 } from 'lucide-react'
 import { useDebounce } from '@renderer/utils'
 // import { STATUS_CONFIG } from './SearchView'
@@ -19,7 +21,9 @@ export default function LibraryView({
   libraryData = {},
   onUpdateGame,
   onBackupTrigger,
-  onRemoveGame
+  onRemoveGame,
+  settings,
+  onUpdatePreferences
 }: any) {
   // --- 1. STATE MACHINE ---
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
@@ -32,6 +36,10 @@ export default function LibraryView({
   const [sortMode, setSortMode] = useState<'recent_added' | 'recent_played' | 'alphabetical'>(
     'recent_added'
   )
+
+  // --- HOLOGRAPHIC FOCUS STATE ---
+  const isImmersiveMode = settings?.preferences?.immersiveLibraryMode ?? false
+  const [hoveredCardId, setHoveredCardId] = useState<number | null>(null)
 
   // --- 2. THE DATA PIPELINE (Highly Optimized) ---
   const processedGames = useMemo(() => {
@@ -101,6 +109,19 @@ export default function LibraryView({
                 className="w-full bg-white/5 border border-white/10 text-white rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:border-accent/50 focus:bg-white/10 transition-all placeholder:text-textMuted/50"
               />
             </div>
+
+            {/* --- NEW: IMMERSIVE TOGGLE --- */}
+            <button
+              onClick={() => onUpdatePreferences({ immersiveLibraryMode: !isImmersiveMode })}
+              title={isImmersiveMode ? 'Disable Immersive Focus' : 'Enable Immersive Focus'}
+              className={`p-2 cursor-pointer rounded-xl transition-all border flex items-center gap-2 ${
+                isImmersiveMode
+                  ? 'bg-accent/20 border-accent/50 text-accent shadow-[0_0_15px_rgba(var(--app-accent),0.2)]'
+                  : 'bg-white/5 border-white/10 text-textMuted hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              {isImmersiveMode ? <Eye size={18} /> : <EyeOff size={18} />}
+            </button>
 
             {/* Filter Toggle */}
             <button
@@ -226,18 +247,71 @@ export default function LibraryView({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
+                // If the mouse leaves the entire grid, reset the spotlight
+                onMouseLeave={() => setHoveredCardId(null)}
               >
-                {/* layout prop enables the Liquid Grid animation when items are filtered */}
-                {processedGames.map((game) => (
-                  <motion.div layout key={game.rawgId}>
-                    <LibraryGridCard
-                      game={game}
-                      onUpdate={onUpdateGame}
-                      onBackup={onBackupTrigger}
-                      onRemoveGame={onRemoveGame}
-                    />
-                  </motion.div>
-                ))}
+                {processedGames.map((game) => {
+                  // --- FOCUS ENGINE LOGIC ---
+                  let cardState = 'normal'
+                  if (isImmersiveMode) {
+                    if (hoveredCardId === null) {
+                      cardState = 'idle' // Nothing hovered: Sleep mode
+                    } else if (hoveredCardId === game.rawgId) {
+                      cardState = 'hovered' // This card is hovered: Spotlight!
+                    } else {
+                      cardState = 'dimmed' // Another card is hovered: Support mode
+                    }
+                  }
+
+                  // --- HARDWARE ACCELERATED VARIANTS ---
+                  // const focusVariants = {
+                  //   normal: { opacity: 1, filter: 'blur(0px) grayscale(0%)', scale: 1, zIndex: 0 },
+                  //   idle: {
+                  //     opacity: 0.25,
+                  //     filter: 'blur(3px) grayscale(80%)',
+                  //     scale: 0.98,
+                  //     zIndex: 0
+                  //   },
+                  //   hovered: {
+                  //     opacity: 1,
+                  //     filter: 'blur(0px) grayscale(0%)',
+                  //     scale: 1.05,
+                  //     zIndex: 10
+                  //   },
+                  //   dimmed: {
+                  //     opacity: 0.5,
+                  //     filter: 'blur(1px) grayscale(40%)',
+                  //     scale: 0.98,
+                  //     zIndex: 0
+                  //   }
+                  // }
+                  const focusVariants = {
+                    normal: { scale: 1, zIndex: 0 },
+                    idle: { scale: 0.98, zIndex: 0 },
+                    hovered: { scale: 1.05, zIndex: 10 },
+                    dimmed: { scale: 0.98, zIndex: 0 }
+                  }
+
+                  return (
+                    <motion.div
+                      layout
+                      key={game.rawgId}
+                      variants={focusVariants}
+                      animate={cardState}
+                      transition={{ duration: 0.3, ease: 'easeOut' }}
+                      onMouseEnter={() => setHoveredCardId(game.rawgId)}
+                      className="relative"
+                    >
+                      <LibraryGridCard
+                        game={game}
+                        onUpdate={onUpdateGame}
+                        onBackup={onBackupTrigger}
+                        onRemoveGame={onRemoveGame}
+                        cardState={cardState}
+                      />
+                    </motion.div>
+                  )
+                })}
               </motion.div>
             ) : (
               <motion.div
