@@ -31,7 +31,8 @@ export default function LibraryGridCard({
   onUpdate,
   onBackup,
   onRemoveGame,
-  cardState = 'normal'
+  cardState = 'normal',
+  onMenuToggle
 }: any) {
   const [isChangingStatus, setIsChangingStatus] = useState<string | null>(null)
   const [isPillHovered, setIsPillHovered] = useState(false)
@@ -42,6 +43,12 @@ export default function LibraryGridCard({
   const [isFlashing, setIsFlashing] = useState(true)
 
   const [isRestoring, setIsRestoring] = useState(false)
+
+  useEffect(() => {
+    if (onMenuToggle) {
+      onMenuToggle(isSettingsOpen)
+    }
+  }, [isSettingsOpen, onMenuToggle])
 
   // 1. The Background Layer Variants
   const imageVariants = {

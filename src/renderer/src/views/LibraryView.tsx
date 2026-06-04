@@ -40,6 +40,7 @@ export default function LibraryView({
   // --- HOLOGRAPHIC FOCUS STATE ---
   const isImmersiveMode = settings?.preferences?.immersiveLibraryMode ?? false
   const [hoveredCardId, setHoveredCardId] = useState<number | null>(null)
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null)
 
   // --- 2. THE DATA PIPELINE (Highly Optimized) ---
   const processedGames = useMemo(() => {
@@ -286,10 +287,10 @@ export default function LibraryView({
                   //   }
                   // }
                   const focusVariants = {
-                    normal: { scale: 1, zIndex: 0 },
-                    idle: { scale: 0.98, zIndex: 0 },
-                    hovered: { scale: 1.05, zIndex: 10 },
-                    dimmed: { scale: 0.98, zIndex: 0 }
+                    normal: { scale: 1 },
+                    idle: { scale: 0.98 },
+                    hovered: { scale: 1.05 },
+                    dimmed: { scale: 0.98 }
                   }
 
                   return (
@@ -300,7 +301,11 @@ export default function LibraryView({
                       animate={cardState}
                       transition={{ duration: 0.3, ease: 'easeOut' }}
                       onMouseEnter={() => setHoveredCardId(game.rawgId)}
-                      className="relative"
+                      className={`relative transition-colors duration-300 ${
+                        hoveredCardId === game.rawgId || openMenuId === game.rawgId
+                          ? 'z-60'
+                          : 'z-10'
+                      }`}
                     >
                       <LibraryGridCard
                         game={game}
@@ -308,6 +313,9 @@ export default function LibraryView({
                         onBackup={onBackupTrigger}
                         onRemoveGame={onRemoveGame}
                         cardState={cardState}
+                        onMenuToggle={(isOpen: boolean) =>
+                          setOpenMenuId(isOpen ? game.rawgId : null)
+                        }
                       />
                     </motion.div>
                   )
