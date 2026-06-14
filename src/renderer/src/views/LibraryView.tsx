@@ -7,7 +7,6 @@ import {
   List as ListIcon,
   FolderPlus,
   CloudAlert,
-  ArrowDownWideNarrow,
   Eye,
   EyeOff,
   Plus

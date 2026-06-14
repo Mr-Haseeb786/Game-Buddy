@@ -1,5 +1,5 @@
 import { ReactNode } from 'react'
-import { Gamepad2, Search, Settings, User, Compass } from 'lucide-react'
+import { Gamepad2, Search, Settings, User } from 'lucide-react'
 import { useUI } from '../../context/UIContext'
 
 export default function Sidebar() {

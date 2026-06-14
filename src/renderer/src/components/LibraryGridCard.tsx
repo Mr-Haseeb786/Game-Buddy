@@ -127,12 +127,21 @@ export default function LibraryGridCard({
   const needsBackupWarning = isPlaying && (!game.cloudSaveId || daysSinceUpdate > 3)
   const needsPathWarning = !game.savePathDesktop
 
+  // useEffect(() => {
+  //   if (needsPathWarning) {
+  //     setIsFlashing(true) // Reset animation if warning triggers again
+  //     const timer = setTimeout(() => setIsFlashing(false), 5000)
+  //     return () => clearTimeout(timer) // Cleanup prevents memory leaks
+  //   }
+  // }, [needsPathWarning])
+
   useEffect(() => {
-    if (needsPathWarning) {
-      setIsFlashing(true) // Reset animation if warning triggers again
-      const timer = setTimeout(() => setIsFlashing(false), 5000)
-      return () => clearTimeout(timer) // Cleanup prevents memory leaks
-    }
+    if (!needsPathWarning) return
+
+    setIsFlashing(true) // Reset animation if warning triggers again
+    const timer = setTimeout(() => setIsFlashing(false), 5000)
+
+    return () => clearTimeout(timer) // Cleanup prevents memory leaks
   }, [needsPathWarning])
 
   // --- ACTION HANDLERS ---

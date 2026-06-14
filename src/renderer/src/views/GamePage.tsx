@@ -77,7 +77,7 @@ export default function GamePage({
     if (initialGame?.id) fetchGameData()
   }, [initialGame?.id])
 
-  const themeColor = fullGame?.dominant_color ? `#${fullGame.dominant_color}` : '#3b82f6'
+  // const themeColor = fullGame?.dominant_color ? `#${fullGame.dominant_color}` : '#3b82f6'
   const hltbUrl = `https://howlongtobeat.com/?q=${encodeURIComponent(fullGame?.name || '')}`
 
   const formattedSlug = (fullGame?.name || '')
@@ -96,11 +96,11 @@ export default function GamePage({
   const pcPlatform = fullGame?.platforms?.find((p: any) => p.platform.name === 'PC')
   const reqs = pcPlatform?.requirements_en || pcPlatform?.requirements || null
 
-  const activeStatus = libraryEntry?.status
-  const statusConfig = activeStatus
-    ? STATUS_CONFIG[activeStatus as keyof typeof STATUS_CONFIG]
-    : null
-  const statusColor = statusConfig?.color
+  // const activeStatus = libraryEntry?.status
+  // const statusConfig = activeStatus
+  //   ? STATUS_CONFIG[activeStatus as keyof typeof STATUS_CONFIG]
+  //   : null
+  // const statusColor = statusConfig?.color
 
   return (
     <div className="relative min-h-screen bg-primary selection:bg-accent/30 rounded-[2.5rem]">

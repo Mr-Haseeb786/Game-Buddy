@@ -1,5 +1,5 @@
 import { Bell, Download, Cloud, CloudOff, CloudDrizzle, AlertTriangle, Leaf } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useUI } from '../../context/UIContext'
 
 export default function TopBar({

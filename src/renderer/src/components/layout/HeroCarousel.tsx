@@ -105,7 +105,7 @@ export default function HeroCarousel({
   }, [currentColor, enableSearchAmbience])
 
   const swipePower = (offset: number, velocity: number) => Math.abs(offset) * velocity
-  const handleDragEnd = (e: any, { offset, velocity }: PanInfo) => {
+  const handleDragEnd = (_: any, { offset, velocity }: PanInfo) => {
     const swipe = swipePower(offset.x, velocity.x)
     const swipeConfidenceThreshold = 10000
 

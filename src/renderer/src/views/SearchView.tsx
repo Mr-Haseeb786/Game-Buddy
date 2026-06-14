@@ -5,7 +5,6 @@ import {
   Loader2,
   ChevronRight,
   Star,
-  Calendar,
   Plus,
   Check,
   Gamepad2,

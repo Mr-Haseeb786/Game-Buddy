@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Check, Edit3, Power, PaintBucket } from 'lucide-react'
+import { Edit3, Power, PaintBucket } from 'lucide-react'
 import { generateThemeMatrix } from '../themeEngine'
 import { ChassisType, CustomThemePayload } from 'src/shared/types'
 

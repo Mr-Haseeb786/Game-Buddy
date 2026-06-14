@@ -1,12 +1,9 @@
 // src/renderer/src/App.tsx
 import { useState, useEffect } from 'react'
-import { AppSettings, FileNode, NetworkTask, SystemNotification } from '../../shared/types'
+import { AppSettings, NetworkTask, SystemNotification } from '../../shared/types'
 import { LibraryData, GameEntry } from '../../shared/types'
-import { GameSearch } from './components/GameSearch'
 import { RawgGame } from 'src/shared/rawg'
 import { GameStatus } from '../../shared/types'
-import { ManageGameModal } from './components/ManageGameModal'
-import { Cloud, CloudOff, CloudDrizzle, AlertTriangle } from 'lucide-react'
 import { SyncStatus } from '../../shared/types'
 import BackupModal from './components/BackUpModal'
 import CloudManagerModal from './components/CloudManagerModal'
@@ -33,7 +30,7 @@ export default function App() {
   const [syncState, setSyncState] = useState<SyncStatus>('idle')
 
   // Track which game is currently open in the modal
-  const [managingGame, setManagingGame] = useState<GameEntry | null>(null)
+  const [, setManagingGame] = useState<GameEntry | null>(null)
 
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isAuthenticating, setIsAuthenticating] = useState(true)
@@ -44,7 +41,7 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState<{ id: string; title: string } | null>(null)
 
   const [settings, setSettings] = useState<AppSettings | null>(null)
-  const [networkTasks, setNetworkTasks] = useState<NetworkTask[]>([])
+  const [networkTasks] = useState<NetworkTask[]>([])
   const [notifications, setNotifications] = useState<SystemNotification[]>([])
 
   const wallpaperUrl = settings?.preferences?.wallpaper

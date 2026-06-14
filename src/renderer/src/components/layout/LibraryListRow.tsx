@@ -58,12 +58,24 @@ export default function LibraryListRow({ game, onUpdate, onBackup, onRemoveGame 
   const needsBackupWarning = isPlaying && (!game.cloudSaveId || daysSinceUpdate > 3)
   const needsPathWarning = !game.savePathDesktop
 
+  // useEffect(() => {
+  //   if (needsPathWarning) {
+  //     setIsFlashing(true)
+  //     const timer = setTimeout(() => setIsFlashing(false), 5000)
+  //     return () => clearTimeout(timer)
+  //   }
+  // }, [needsPathWarning])
+
   useEffect(() => {
-    if (needsPathWarning) {
-      setIsFlashing(true)
-      const timer = setTimeout(() => setIsFlashing(false), 5000)
-      return () => clearTimeout(timer)
-    }
+    // 1. Bail out immediately if the warning isn't needed
+    if (!needsPathWarning) return
+
+    // 2. Execute the logic
+    setIsFlashing(true)
+    const timer = setTimeout(() => setIsFlashing(false), 5000)
+
+    // 3. Return the cleanup function
+    return () => clearTimeout(timer)
   }, [needsPathWarning])
 
   // --- HANDLERS ---

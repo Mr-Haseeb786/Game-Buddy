@@ -1,15 +1,6 @@
 import { ReactNode, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  X,
-  Server,
-  Activity,
-  Download,
-  Bell,
-  AlertTriangle,
-  CheckCircle2,
-  Info
-} from 'lucide-react'
+import { X, Server, Download, Bell, AlertTriangle, CheckCircle2, Info } from 'lucide-react'
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
 import { NetworkTask, SystemNotification } from 'src/shared/types'

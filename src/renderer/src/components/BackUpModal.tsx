@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { GameEntry, ScannedFolder, ScannedFile } from '../../../shared/types'
 import { formatBytes, formatTimeAgo, getBaseNameColor } from '../utils'
 import {

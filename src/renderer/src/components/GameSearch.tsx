@@ -14,7 +14,7 @@ export function GameSearch({ onAddGame, existingLibraryIds }: GameSearchProps) {
   const [searchInput, setSearchInput] = useState('')
   const [activeQuery, setActiveQuery] = useState('')
 
-  const { data, isLoading, error } = useQuery({
+  const { data } = useQuery({
     queryKey: ['games', activeQuery],
     queryFn: () => searchGames(activeQuery),
     enabled: activeQuery.length > 0
