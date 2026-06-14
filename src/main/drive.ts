@@ -13,6 +13,39 @@ const isAuthError = (error: any) => {
   return msg === 'invalid_grant' || msg.includes('invalid_grant')
 }
 
+// --- NEW: THE TRANSPARENT VAULT MANAGER ---
+async function getOrCreateSynapseFolder(): Promise<string> {
+  const folderName = 'Synapse_Backups'
+
+  try {
+    // 1. Check if the folder already exists (and isn't in the trash)
+    const searchResponse = await drive.files.list({
+      q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields: 'files(id)'
+    })
+
+    if (searchResponse.data.files && searchResponse.data.files.length > 0) {
+      return searchResponse.data.files[0].id!
+    }
+
+    // 2. If it doesn't exist, create it in the root of their Drive
+    const createResponse = await drive.files.create({
+      requestBody: {
+        name: folderName,
+        mimeType: 'application/vnd.google-apps.folder'
+      },
+      fields: 'id'
+    })
+
+    console.log('Created new Synapse_Backups folder in Google Drive.')
+    return createResponse.data.id!
+  } catch (error) {
+    if (isAuthError(error)) throw new Error('AUTH_EXPIRED')
+    console.error('Failed to get/create Synapse folder:', error)
+    throw new Error('Could not access Drive folder.')
+  }
+}
+
 export async function syncLibraryToDrive(
   libraryData: LibraryData,
   maxRetries = 3
@@ -21,9 +54,10 @@ export async function syncLibraryToDrive(
 
   while (attempt < maxRetries) {
     try {
+      const folderId = await getOrCreateSynapseFolder()
       const searchResponse = await drive.files.list({
-        spaces: 'appDataFolder',
-        q: "name='library.json'",
+        // spaces: 'appDataFolder',
+        q: `name='library.json' and '${folderId}' in parents and trashed=false`, // <-- UPDATED
         fields: 'files(id)'
       })
 
@@ -34,7 +68,7 @@ export async function syncLibraryToDrive(
         await drive.files.update({ fileId: files[0].id!, media: media })
       } else {
         await drive.files.create({
-          requestBody: { name: 'library.json', parents: ['appDataFolder'] },
+          requestBody: { name: 'library.json', parents: [folderId] },
           media: media
         })
       }
@@ -61,9 +95,9 @@ export async function syncLibraryToDrive(
 export async function downloadLibraryFromDrive(): Promise<LibraryData | null> {
   try {
     // 1. Search for the file in the hidden folder
+    const folderId = await getOrCreateSynapseFolder()
     const searchResponse = await drive.files.list({
-      spaces: 'appDataFolder',
-      q: "name='library.json'",
+      q: `name='library.json' and '${folderId}' in parents and trashed=false`,
       fields: 'files(id)'
     })
 
@@ -100,37 +134,38 @@ export async function uploadSaveToDrive(
     try {
       const zip = new JSZip()
 
-      // 1. Append files as Readable Streams.
-      // This forces JSZip to read them piece-by-piece, keeping RAM usage near zero.
+      // 1. Append files (JSZip still reads them efficiently from the hard drive)
       filesToZip.forEach((file) => {
         zip.file(file.relativePath || file.name, createReadStream(file.absolutePath))
       })
 
-      // 2. Generate the stream and track progress
-      const archiveStream = zip.generateNodeStream(
+      // 2. Grab the folder ID *BEFORE* we process the zip
+      const folderId = await getOrCreateSynapseFolder()
+
+      // 3. THE FIX: Generate a Buffer instead of a Node Stream.
+      // Google's 'update' endpoint silently fails and drops streams that lack a Content-Length.
+      // Generating a Buffer provides the exact file size natively, fixing the empty zip bug!
+      const zipBuffer = await zip.generateAsync(
         {
           type: 'nodebuffer',
-          streamFiles: true, // Crucial for low-memory streaming
           compression: 'DEFLATE',
           compressionOptions: { level: 9 }
         },
         (metadata) => {
-          // JSZip natively gives us a clean 0-100 percentage!
+          // Progress bar still works perfectly!
           onProgress(Math.min(Math.round(metadata.percent), 99))
         }
       )
 
-      archiveStream.on('error', (err) => reject(err))
-
-      // 3. Prepare the Drive upload payload
+      // 4. Prepare the Drive upload payload
       const media = {
         mimeType: 'application/zip',
-        body: archiveStream
+        body: zipBuffer
       }
 
       const driveFileName = `${gameTitle.replace(/[^a-z0-9]/gi, '_')}_save.zip`
 
-      // 4. Push to Google Drive
+      // 5. Push to Google Drive
       if (existingCloudSaveId) {
         await drive.files.update({
           fileId: existingCloudSaveId,
@@ -142,7 +177,7 @@ export async function uploadSaveToDrive(
         const response = await drive.files.create({
           requestBody: {
             name: driveFileName,
-            parents: ['appDataFolder']
+            parents: [folderId]
           },
           media: media,
           fields: 'id'
@@ -150,7 +185,7 @@ export async function uploadSaveToDrive(
         onProgress(100)
         resolve(response.data.id!)
       }
-    } catch (error) {
+    } catch (error: any) {
       if (isAuthError(error)) return reject(new Error('AUTH_EXPIRED'))
       reject(error)
     }
@@ -159,9 +194,9 @@ export async function uploadSaveToDrive(
 
 export async function getCloudStorageStats(): Promise<CloudSaveStat[]> {
   try {
+    const folderId = await getOrCreateSynapseFolder() // <-- ADD THIS
     const response = await drive.files.list({
-      spaces: 'appDataFolder',
-      // Ask Google to only send back the specific fields we care about to save bandwidth
+      q: `'${folderId}' in parents and trashed=false`, // <-- UPDATED
       fields: 'files(id, name, size, modifiedTime)'
     })
 
@@ -233,8 +268,10 @@ export function mergeLibraries(local: LibraryData, cloud: LibraryData): LibraryD
 
 export async function testListHiddenFiles() {
   try {
+    const folderId = await getOrCreateSynapseFolder() // <-- ADD THIS
+
     const searchResponse = await drive.files.list({
-      spaces: 'appDataFolder',
+      q: `name='library.json' and '${folderId}' in parents and trashed=false`,
       fields: 'files(id, name, size)' // Ask Google for the name and size
     })
 

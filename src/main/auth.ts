@@ -14,7 +14,7 @@ export const oauth2Client = new google.auth.OAuth2(
   REDIRECT_URI
 )
 
-const SCOPES = ['https://www.googleapis.com/auth/drive.appdata']
+const SCOPES = ['https://www.googleapis.com/auth/drive.file']
 const getTokenPath = () => path.join(app.getPath('userData'), 'google-tokens.json')
 
 // --- NEW: Global references for cancellation ---
