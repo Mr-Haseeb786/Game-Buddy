@@ -86,8 +86,22 @@ export default function App() {
           if (cloudLibrary) {
             setLibrary(cloudLibrary) // Update UI with cloud data
           }
-        } catch (e) {
-          console.error('Failed to pull latest cloud save on boot')
+        } catch (e: any) {
+          const errorMessage = String(e?.message || e)
+
+          if (errorMessage.includes('AUTH_EXPIRED')) {
+            console.error('Token expired. Severing connection.')
+            // Force logout to delete the dead local token
+            await handleGoogleLogout()
+            // Alert the user
+            pushNotification(
+              'Uplink Severed',
+              'Your Google Drive session has expired. Please re-authenticate in your Profile.',
+              'error'
+            )
+          } else {
+            console.error('Failed to pull latest cloud save on boot', e)
+          }
         }
       }
       setIsAuthenticating(false)

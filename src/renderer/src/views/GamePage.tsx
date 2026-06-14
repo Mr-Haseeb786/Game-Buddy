@@ -79,7 +79,17 @@ export default function GamePage({
 
   const themeColor = fullGame?.dominant_color ? `#${fullGame.dominant_color}` : '#3b82f6'
   const hltbUrl = `https://howlongtobeat.com/?q=${encodeURIComponent(fullGame?.name || '')}`
-  const pcgbUrl = `https://www.pcgamebenchmark.com/`
+
+  const formattedSlug = (fullGame?.name || '')
+    .toLowerCase() // "Crimson Desert" -> "crimson desert"
+    .replace(/[^a-z0-9\s-]/g, '') // Removes special chars like ' or : (e.g., "Assassin's" -> "Assassins")
+    .replace(/\s+/g, '-') // Replaces spaces with hyphens -> "crimson-desert"
+    .replace(/-+/g, '-') // Cleans up any accidental double hyphens
+    .replace(/^-|-$/g, '') // Trims hyphens from the start or end
+
+  const pcgbUrl = formattedSlug
+    ? `https://www.pcgamebenchmark.com/${formattedSlug}-system-requirements`
+    : 'https://www.pcgamebenchmark.com/'
 
   const description =
     fullGame?.description_raw || fullGame?.description || 'No description available.'

@@ -154,7 +154,8 @@ export default function TopBar({
               {profile.name}
             </p>
             <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">
-              Online
+              {(cloud.label === 'Offline' && <span className="text-gray-500">Offline</span>) ||
+                ((cloud.label === 'Secured' || cloud.label === 'Syncing') && <span>Online</span>)}
             </p>
           </div>
 

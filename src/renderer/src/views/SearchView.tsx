@@ -58,6 +58,7 @@ export default function SearchView({
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<Game[]>([])
 
+  const [featuredGames, setFeaturedGames] = useState<any[]>([])
   const [trending, setTrending] = useState<Game[]>([])
   const [indie, setIndie] = useState<Game[]>([])
   const [isLoadingHome, setIsLoadingHome] = useState(true)
@@ -66,12 +67,14 @@ export default function SearchView({
     const fetchHomeData = async () => {
       setIsLoadingHome(true)
       try {
-        const [trendingRes, indieRes] = await Promise.all([
+        const [trendingRes, indieRes, featuredRes] = await Promise.all([
           window.api.getDiscoverGames('trending', 1),
-          window.api.getDiscoverGames('indie', 1)
+          window.api.getDiscoverGames('indie', 1),
+          window.api.getDiscoverGames('featured', 1)
         ])
         if (trendingRes.success) setTrending(trendingRes.data?.results || [])
         if (indieRes.success) setIndie(indieRes.data?.results || [])
+        if (featuredRes.success) setFeaturedGames(featuredRes.data?.results || [])
       } catch (error) {
         console.error('Failed to load discover data')
       } finally {
@@ -148,7 +151,7 @@ export default function SearchView({
           <>
             {/* Added libraryData and onAddGame so the Carousel can use them */}
             <HeroCarousel
-              games={trending}
+              games={featuredGames}
               isLoading={isLoadingHome}
               searchQuery={searchQuery}
               libraryData={libraryData}

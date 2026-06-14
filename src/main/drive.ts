@@ -8,6 +8,10 @@ import JSZip from 'jszip'
 const drive = google.drive({ version: 'v3', auth: oauth2Client })
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+const isAuthError = (error: any) => {
+  const msg = error?.message || error?.response?.data?.error || error?.cause?.message || ''
+  return msg === 'invalid_grant' || msg.includes('invalid_grant')
+}
 
 export async function syncLibraryToDrive(
   libraryData: LibraryData,
@@ -38,6 +42,7 @@ export async function syncLibraryToDrive(
       console.log(`Cloud sync successful on attempt ${attempt + 1}`)
       return true // Success! Exit the loop.
     } catch (error: any) {
+      if (isAuthError(error)) throw new Error('AUTH_EXPIRED')
       attempt++
       console.error(`Sync attempt ${attempt} failed:`, error.message)
 
@@ -79,6 +84,7 @@ export async function downloadLibraryFromDrive(): Promise<LibraryData | null> {
     console.log('Successfully downloaded library from Google Drive.')
     return response.data as LibraryData
   } catch (error) {
+    if (isAuthError(error)) throw new Error('AUTH_EXPIRED')
     console.error('Error downloading from Drive:', error)
     throw new Error('Failed to fetch cloud save.')
   }
@@ -145,6 +151,7 @@ export async function uploadSaveToDrive(
         resolve(response.data.id!)
       }
     } catch (error) {
+      if (isAuthError(error)) return reject(new Error('AUTH_EXPIRED'))
       reject(error)
     }
   })
@@ -174,6 +181,7 @@ export async function getCloudStorageStats(): Promise<CloudSaveStat[]> {
         .sort((a, b) => new Date(b.modifiedTime).getTime() - new Date(a.modifiedTime).getTime())
     )
   } catch (error) {
+    if (isAuthError(error)) throw new Error('AUTH_EXPIRED')
     console.error('Failed to fetch cloud storage stats:', error)
     throw new Error('Could not read Google Drive storage')
   }
@@ -184,6 +192,7 @@ export async function deleteCloudSave(fileId: string): Promise<boolean> {
     await drive.files.delete({ fileId })
     return true
   } catch (error) {
+    if (isAuthError(error)) throw new Error('AUTH_EXPIRED')
     console.error(`Failed to delete file ${fileId} from Drive:`, error)
     throw new Error('Could not delete file from Google Drive')
   }
@@ -286,6 +295,7 @@ export async function downloadSaveFromDrive(
       destStream.on('finish', () => resolve())
       destStream.on('error', (err) => reject(err))
     } catch (error) {
+      if (isAuthError(error)) return reject(new Error('AUTH_EXPIRED'))
       console.error('Drive download stream failed:', error)
       reject(error)
     }

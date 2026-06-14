@@ -96,8 +96,26 @@ export async function getDiscoverGames(
   let params = `page_size=20&page=${page}`
 
   switch (category) {
+    case 'featured':
+      const currentYear = new Date().getFullYear()
+      const lastYear = currentYear - 1
+      // Grabs the highest-rated games of the current year
+      params += `&ordering=-added&dates=${lastYear}-01-01,${currentYear}-12-31`
+      console.log(currentYear)
+      break
     case 'trending':
-      params += '&ordering=-added&dates=2023-01-01,2024-12-31'
+      const today = new Date()
+
+      const past = new Date(today)
+      past.setMonth(past.getMonth() - 6)
+      const startDate = past.toISOString().split('T')[0]
+
+      const future = new Date(today)
+      future.setMonth(future.getMonth() + 6)
+      const endDate = future.toISOString().split('T')[0]
+
+      // Completely relies on '-added' to capture raw community hype without waiting for reviews
+      params += `&dates=${startDate},${endDate}&ordering=-added`
       break
     case 'indie':
       params += '&genres=indie&ordering=-rating'

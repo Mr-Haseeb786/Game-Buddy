@@ -9,12 +9,14 @@ import {
   CloudAlert,
   ArrowDownWideNarrow,
   Eye,
-  EyeOff
+  EyeOff,
+  Plus
 } from 'lucide-react'
 import { useDebounce } from '@renderer/utils'
 // import { STATUS_CONFIG } from './SearchView'
 import LibraryGridCard from '../components/LibraryGridCard'
 import LibraryListRow from '@renderer/components/layout/LibraryListRow'
+import AddCustomGameModal from '@renderer/components/AddCustomGameModal'
 // import LibraryTableRow from '../components/LibraryTableRow'
 
 export default function LibraryView({
@@ -36,6 +38,8 @@ export default function LibraryView({
   const [sortMode, setSortMode] = useState<'recent_added' | 'recent_played' | 'alphabetical'>(
     'recent_added'
   )
+
+  const [showAddModal, setShowAddModal] = useState(false)
 
   // --- HOLOGRAPHIC FOCUS STATE ---
   const isImmersiveMode = settings?.preferences?.immersiveLibraryMode ?? false
@@ -130,6 +134,13 @@ export default function LibraryView({
               className={`p-2.5 cursor-pointer rounded-xl border transition-colors flex items-center gap-2 ${showFilters || activeStatuses.length > 0 || specialFilters.needsBackup || specialFilters.needsPath ? 'bg-accent/20 border-accent/50 text-accent' : 'bg-white/5 border-white/10 text-textMuted hover:bg-white/10 hover:text-white'}`}
             >
               <Filter size={18} />
+            </button>
+
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="px-3 py-2 cursor-pointer rounded-xl transition-all border border-white/10 bg-white/5 text-textMuted hover:bg-accent/20 hover:text-accent hover:border-accent/50 flex items-center gap-2 font-bold text-sm"
+            >
+              <Plus size={16} /> Add Game
             </button>
 
             {/* View Mode Toggle */}
@@ -344,6 +355,17 @@ export default function LibraryView({
           </AnimatePresence>
         </div>
       </div>
+      {/* --- MODALS --- */}
+      {showAddModal && (
+        <AddCustomGameModal
+          onClose={() => setShowAddModal(false)}
+          // We can route this directly to onUpdateGame! Since the dictionary keys by rawgId,
+          // passing a new ID automatically adds it to the list natively.
+          onSave={(newGame) => {
+            onUpdateGame(newGame)
+          }}
+        />
+      )}
     </div>
   )
 }
