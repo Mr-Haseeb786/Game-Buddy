@@ -95,6 +95,16 @@ export async function getDiscoverGames(
   // Map our UI categories to actual RAWG API parameters
   let params = `page_size=20&page=${page}`
 
+  const today = new Date()
+
+  const past = new Date(today)
+  past.setMonth(past.getMonth() - 6)
+  const startDate = past.toISOString().split('T')[0]
+
+  const future = new Date(today)
+  future.setMonth(future.getMonth() + 6)
+  const endDate = future.toISOString().split('T')[0]
+
   switch (category) {
     case 'featured':
       const currentYear = new Date().getFullYear()
@@ -104,24 +114,14 @@ export async function getDiscoverGames(
       console.log(currentYear)
       break
     case 'trending':
-      const today = new Date()
-
-      const past = new Date(today)
-      past.setMonth(past.getMonth() - 6)
-      const startDate = past.toISOString().split('T')[0]
-
-      const future = new Date(today)
-      future.setMonth(future.getMonth() + 6)
-      const endDate = future.toISOString().split('T')[0]
-
       // Completely relies on '-added' to capture raw community hype without waiting for reviews
       params += `&dates=${startDate},${endDate}&ordering=-added`
       break
     case 'indie':
-      params += '&genres=indie&ordering=-rating'
+      params += `&dates=${startDate},${endDate}&genres=indie&ordering=-rating`
       break
     case 'horror':
-      params += '&tags=horror&ordering=-rating'
+      params += `&dates=${startDate},${endDate}&tags=horror&ordering=-rating`
       break
     default:
       params += '&ordering=-rating'
