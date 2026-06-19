@@ -3,6 +3,7 @@ import { oauth2Client } from './auth'
 import { CloudSaveStat, GameEntry, LibraryData, ScannedFile } from '../shared/types'
 import { createWriteStream, createReadStream } from 'fs'
 import JSZip from 'jszip'
+import { Readable } from 'stream'
 
 // Initialize the Drive API client
 const drive = google.drive({ version: 'v3', auth: oauth2Client })
@@ -160,7 +161,7 @@ export async function uploadSaveToDrive(
       // 4. Prepare the Drive upload payload
       const media = {
         mimeType: 'application/zip',
-        body: zipBuffer
+        body: Readable.from(zipBuffer)
       }
 
       const driveFileName = `${gameTitle.replace(/[^a-z0-9]/gi, '_')}_save.zip`
